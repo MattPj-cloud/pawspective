@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pawspective: Divine Edition</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            midnight: '#0a0e27',
+            deepblue: '#111640',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap');
+    body { font-family: 'Space Grotesk', sans-serif; }
+
+    .glass-card {
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 0 40px rgba(139, 92, 246, 0.15), 0 0 80px rgba(139, 92, 246, 0.05);
+    }
+
+    .gold-glass-btn {
+      background: rgba(255, 255, 255, 0.06);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(250, 204, 21, 0.35);
+      transition: all 0.25s ease;
+    }
+    .gold-glass-btn:hover:not(:disabled) {
+      background: rgba(250, 204, 21, 0.1);
+      border-color: rgba(250, 204, 21, 0.6);
+      box-shadow: 0 0 20px rgba(250, 204, 21, 0.1);
+    }
+    .gold-glass-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .laser-line {
+      position: absolute; left: 0; width: 100%; height: 3px;
+      background: linear-gradient(90deg, transparent, #39ff14, transparent);
+      box-shadow: 0 0 15px #39ff14, 0 0 30px #39ff14;
+      animation: scanLaser 0.75s ease-in-out infinite alternate;
+      z-index: 10;
+    }
+    @keyframes scanLaser { 0% { top: 5%; } 100% { top: 90%; } }
+
+    @keyframes jelloWobble {
+      0% { transform: scale(1, 1); }
+      15% { transform: scale(0.95, 1.05); }
+      30% { transform: scale(1.05, 0.95); }
+      45% { transform: scale(0.97, 1.03); }
+      60% { transform: scale(1.02, 0.98); }
+      75% { transform: scale(0.99, 1.01); }
+      100% { transform: scale(1, 1); }
+    }
+    .jello { animation: jelloWobble 0.6s ease; }
+
+    @keyframes rippleOut {
+      0% { transform: translate(-50%, -50%) scale(0); opacity: 0.7; }
+      100% { transform: translate(-50%, -50%) scale(4); opacity: 0; }
+    }
+    .ripple {
+      position: absolute; width: 60px; height: 60px; border-radius: 50%;
+      background: radial-gradient(circle, rgba(255,248,220,0.8), rgba(255,215,0,0.3), transparent);
+      pointer-events: none; z-index: 20;
+      animation: rippleOut 0.7s ease-out forwards;
+    }
+
+    @keyframes shimmerHalo {
+      0%, 100% { filter: drop-shadow(0 0 8px rgba(255,215,0,0.6)) brightness(1); }
+      50% { filter: drop-shadow(0 0 20px rgba(255,215,0,1)) brightness(1.3); }
+    }
+    .halo-shimmer { animation: shimmerHalo 1.2s ease-in-out infinite; }
+
+    @keyframes floatUp {
+      0% { transform: translateY(20px); opacity: 0; }
+      20% { transform: translateY(-5px); opacity: 1; }
+      80% { transform: translateY(-5px); opacity: 1; }
+      100% { transform: translateY(-15px); opacity: 0; }
+    }
+    .divine-overlay {
+      animation: floatUp 1.5s ease-in-out forwards;
+      pointer-events: none;
+    }
+
+    @keyframes wingLeft {
+      0% { transform: translateY(20px) scaleX(1); opacity: 0; }
+      20% { transform: translateY(0) scaleX(1); opacity: 0.9; }
+      50% { transform: translateY(-2px) scaleX(1.05); opacity: 0.9; }
+      80% { transform: translateY(0) scaleX(1); opacity: 0.9; }
+      100% { transform: translateY(-10px) scaleX(0.9); opacity: 0; }
+    }
+    .wing-anim { animation: wingLeft 1.5s ease-in-out forwards; pointer-events: none; }
+
+    .nose-btn {
+      position: absolute;
+      bottom: 12%;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 15;
+      cursor: pointer;
+      transition: transform 0.15s ease;
+      filter: drop-shadow(0 4px 12px rgba(0,0,0,0.5));
+    }
+    .nose-btn:hover { transform: translateX(-50%) scale(1.1); }
+    .nose-btn:active { transform: translateX(-50%) scale(0.9); }
+
+    @keyframes noseWiggle {
+      0% { transform: translateX(-50%) rotate(0deg); }
+      20% { transform: translateX(-50%) rotate(-8deg) scale(1.1); }
+      40% { transform: translateX(-50%) rotate(8deg) scale(1.1); }
+      60% { transform: translateX(-50%) rotate(-4deg); }
+      80% { transform: translateX(-50%) rotate(4deg); }
+      100% { transform: translateX(-50%) rotate(0deg); }
+    }
+    .nose-wiggle { animation: noseWiggle 0.5s ease; }
+
+    @keyframes bioScanPulse {
+      0%, 100% { opacity: 0.7; }
+      50% { opacity: 1; }
+    }
+    .bio-scan-overlay {
+      position: absolute; inset: 0; z-index: 25;
+      background: rgba(0, 0, 0, 0.6);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      pointer-events: none;
+    }
+    .bio-scan-text {
+      animation: bioScanPulse 0.8s ease-in-out infinite;
+    }
+
+    @keyframes verifiedPop {
+      0% { transform: scale(0) rotate(-20deg); opacity: 0; }
+      60% { transform: scale(1.2) rotate(5deg); opacity: 1; }
+      100% { transform: scale(1) rotate(0deg); opacity: 1; }
+    }
+    .verified-badge {
+      animation: verifiedPop 0.5s ease-out forwards;
+    }
+  </style>
+</head>
+<body class="bg-midnight min-h-screen flex items-center justify-center p-4">
+  <div id="root"></div>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef, useCallback } = React;
+
+    const DEEP_THOUGHTS = [
+      "I bark at the vacuum to save your soul.",
+      "Is the ball a metaphor for my own mortality?",
+      "The mailman is a glitch in the simulation.",
+      "I sit. Therefore I am. A good boy.",
+      "Every treat is a fleeting moment of joy in an indifferent universe.",
+      "The leash is society. The park is freedom. The squirrel is chaos.",
+      "I dream of legs that never stop running toward nothing.",
+      "My tail wags, but does it wag for me... or for you?",
+      "The door opens. The door closes. I wait. This is life.",
+      "They say 'no' but my heart says 'yes.' Who is right?",
+      "I have sniffed a thousand butts and found no answers.",
+      "The cat knows something. I can feel it.",
+    ];
+
+    function getRank(count) {
+      if (count <= 10) return "Good Boy";
+      if (count <= 30) return "Angelic Pupper";
+      return "The Bringer of Barkness";
+    }
+
+    const BREED_FACTS = {
+      affenpinscher: "Originally bred to hunt rats in German kitchens and stables.",
+      african: "The Basenji, an African breed, is known as the 'barkless dog.'",
+      airedale: "The largest of all terrier breeds, nicknamed the 'King of Terriers.'",
+      akita: "A symbol of loyalty in Japan — Hachiko was an Akita.",
+      appenzeller: "A Swiss mountain dog bred for herding cattle in the Alps.",
+      australian: "Surprisingly, Australian Shepherds were developed in the American West.",
+      basenji: "One of the oldest dog breeds, they yodel instead of bark.",
+      beagle: "Has about 220 million scent receptors — 44x more than humans.",
+      bluetick: "Can follow a scent trail that is over 300 hours old.",
+      borzoi: "Russian aristocrats once used them to hunt wolves in packs.",
+      bouvier: "Used as ambulance and messenger dogs in World War I.",
+      boxer: "Named for their habit of standing on hind legs and 'boxing.'",
+      brabancon: "A toy breed from Belgium with an almost human-like expression.",
+      briard: "Napoleon reportedly owned Briards — they served as war sentries.",
+      bulldog: "English Bulldogs can't swim due to their heavy, front-loaded bodies.",
+      bullterrier: "The only recognized breed with triangular-shaped eyes.",
+      cattledog: "Australian Cattle Dogs can herd livestock over vast distances for days.",
+      chihuahua: "The smallest recognized dog breed, named after a Mexican state.",
+      chow: "One of the few breeds with a blue-black tongue.",
+      clumber: "The heaviest of all spaniel breeds, favored by British royalty.",
+      cockapoo: "One of the first 'designer dogs,' dating back to the 1960s.",
+      collie: "Lassie made the Rough Collie one of the most famous breeds ever.",
+      coonhound: "Bred to tree raccoons and can bay loud enough to echo for miles.",
+      corgi: "Legend says fairies rode Corgis into battle in Welsh folklore.",
+      cotondetulear: "Named after the city of Tuléar in Madagascar and their cotton-like coat.",
+      dachshund: "Bred to dig into badger dens — 'Dachshund' means 'badger dog.'",
+      dalmatian: "Dalmatian puppies are born completely white; spots develop later.",
+      dane: "Despite the name, Great Danes originated in Germany, not Denmark.",
+      deerhound: "Once so prized in Scotland, only nobility could own one.",
+      dhole: "A wild Asian canid that hunts in packs and can whistle.",
+      dingo: "Australia's wild dog, believed to have arrived 4,000+ years ago.",
+      doberman: "Created by a German tax collector who needed a guard dog on rounds.",
+      elkhound: "A Viking-era breed used to hunt moose and bears in Norway.",
+      entlebucher: "The smallest of the four Swiss Mountain Dog breeds.",
+      eskimo: "Despite the name, American Eskimo Dogs have German origins.",
+      frise: "Bichon Frises were favorites of French royalty in the 16th century.",
+      germanshepherd: "The most popular police and military dog breed worldwide.",
+      golden: "Golden Retrievers have such soft mouths they can carry eggs unbroken.",
+      greyhound: "Can reach speeds of 45 mph — the Ferrari of the dog world.",
+      groenendael: "A Belgian Shepherd known for its striking all-black coat.",
+      havanese: "The national dog of Cuba, descended from dogs brought by Spanish settlers.",
+      hound: "Hounds are among the oldest dog types, bred for tracking prey.",
+      husky: "Siberian Huskies can run 100+ miles a day in sub-zero temperatures.",
+      keeshond: "The symbol of the Dutch Patriot political party in the 18th century.",
+      kelpie: "Australian Kelpies can manage a flock of over 1,000 sheep alone.",
+      komondor: "Their corded coat protects them from wolf bites while guarding flocks.",
+      kuvasz: "Hungarian royalty used them as palace guards in the Middle Ages.",
+      labradoodle: "Originally bred in Australia as a hypoallergenic guide dog.",
+      labrador: "The most popular dog breed in the US for over 30 years straight.",
+      leonberg: "Bred to resemble the lion on the coat of arms of Leonberg, Germany.",
+      lhasa: "Tibetan monks considered them sacred sentinels of Buddhist temples.",
+      malamute: "One of the oldest Arctic sled dogs, bred by the Mahlemut Inuit.",
+      malinois: "The preferred breed for Navy SEALs and Secret Service details.",
+      maltese: "One of the most ancient toy breeds, dating back 2,000+ years.",
+      mastiff: "English Mastiffs can weigh over 230 lbs — gentle giants.",
+      mexicanhairless: "The Xoloitzcuintli is over 3,000 years old, sacred to the Aztecs.",
+      mix: "Mixed breeds often benefit from 'hybrid vigor' and fewer genetic issues.",
+      mountain: "Bernese Mountain Dogs were originally Swiss farm dogs and draft animals.",
+      newfoundland: "Natural-born swimmers with webbed feet — they've rescued drowning people.",
+      otterhound: "One of the rarest breeds, with fewer than 1,000 worldwide.",
+      ovcharka: "Caucasian Ovcharkas were bred to fight off bears and wolves.",
+      papillon: "Named for their butterfly-shaped ears ('papillon' = butterfly in French).",
+      pekinese: "Ancient Chinese royalty hid them in their sleeves as 'sleeve dogs.'",
+      pembroke: "Queen Elizabeth II owned more than 30 Pembroke Welsh Corgis.",
+      pitbull: "Were once known as 'nanny dogs' for their gentleness with children.",
+      pointer: "Can detect game birds from over 300 yards away.",
+      pomeranian: "Descended from large sled dogs but bred down to toy size.",
+      poodle: "The second most intelligent dog breed, originally bred for duck hunting.",
+      pug: "Chinese emperors kept Pugs as lapdogs in luxury, guarded by soldiers.",
+      puggle: "A Pug-Beagle mix that combines the best traits of both breeds.",
+      pyrenees: "Great Pyrenees have double dewclaws — extra toes for mountain terrain.",
+      redbone: "One of the few all-American coonhound breeds, known for their red coat.",
+      retriever: "Retrievers have 'soft mouths' — they can carry game without damaging it.",
+      ridgeback: "Rhodesian Ridgebacks were bred to corner lions in Africa.",
+      rottweiler: "Descended from Roman drover dogs that marched with legions.",
+      saluki: "Possibly the oldest domesticated dog breed, dating back 7,000 years.",
+      samoyed: "Their perpetual 'smile' prevents drooling and icicle formation in Siberia.",
+      schipperke: "Belgian barge dogs — 'Schipperke' means 'little captain.'",
+      schnauzer: "Their distinctive beard was bred to protect from rodent bites.",
+      setter: "English Setters 'set' (crouch) when they find game birds.",
+      sheepdog: "Old English Sheepdogs were tax-exempt if their tails were docked.",
+      shiba: "The most popular companion dog in Japan, known for the 'Shiba scream.'",
+      shihtzu: "Name means 'lion dog' in Chinese — bred to resemble Chinese lions.",
+      spaniel: "Spaniels originated in Spain ('Spaniel' = 'Spanish dog').",
+      springer: "English Springer Spaniels 'spring' game birds into the air for hunters.",
+      stbernard: "St. Bernards rescued over 2,000 people in the Swiss Alps.",
+      terrier: "The name comes from 'terra' (earth) — they were bred to dig.",
+      tervuren: "A Belgian Shepherd prized for its elegant mahogany coat.",
+      vizsla: "Hungarian Vizslas are called 'Velcro dogs' — they never leave your side.",
+      waterdog: "Spanish Water Dogs have naturally corded, waterproof coats.",
+      weimaraner: "Known as the 'Gray Ghost' for their sleek silver coat and stealth.",
+      whippet: "The fastest domesticated animal of their weight — up to 35 mph.",
+      wolfhound: "Irish Wolfhounds are the tallest of all dog breeds.",
+    };
+
+    const DEFAULT_FACTS = [
+      "Dogs have a sense of time and can tell how long you've been gone.",
+      "A dog's nose print is unique, like a human fingerprint.",
+      "Dogs can learn more than 1,000 words and gestures.",
+      "Dogs dream just like humans — small dogs dream more often.",
+      "A wagging tail doesn't always mean a happy dog.",
+    ];
+
+    function extractBreed(url) {
+      const parts = url.split('/');
+      const idx = parts.indexOf('breeds');
+      if (idx !== -1 && parts[idx + 1]) return parts[idx + 1].replace('-', ' ');
+      return 'mystery pup';
+    }
+
+    function getBreedFact(breed) {
+      const key = breed.replace(/\s+/g, '').toLowerCase();
+      if (BREED_FACTS[key]) return BREED_FACTS[key];
+      // Try first word match
+      const first = key.split(' ')[0];
+      if (BREED_FACTS[first]) return BREED_FACTS[first];
+      return DEFAULT_FACTS[Math.floor(Math.random() * DEFAULT_FACTS.length)];
+    }
+
+    // Sparkle sound via Web Audio API
+    function playSparkle() {
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const notes = [523.25, 659.25, 783.99, 1046.5, 1318.5];
+        notes.forEach((freq, i) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, ctx.currentTime + i * 0.08);
+          gain.gain.setValueAtTime(0.15, ctx.currentTime + i * 0.08);
+          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.08 + 0.5);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(ctx.currentTime + i * 0.08);
+          osc.stop(ctx.currentTime + i * 0.08 + 0.5);
+        });
+        setTimeout(() => ctx.close(), 2000);
+      } catch (e) {}
+    }
+
+    // SVG Icons
+    const ScanIcon = () => (
+      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+        fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/>
+        <path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/>
+        <line x1="7" y1="12" x2="17" y2="12"/>
+      </svg>
+    );
+    const CameraIcon = () => (
+      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+        fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3Z"/>
+        <circle cx="12" cy="13" r="3"/>
+      </svg>
+    );
+    const CheckCircleIcon = () => (
+      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+        fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+        <polyline points="22 4 12 14.01 9 11.01"/>
+      </svg>
+    );
+
+    const BIO_SCAN_PHASES = [
+      "Scanning Fur Density...",
+      "Measuring Tail-Wag Velocity...",
+      "Detecting Infinite Goodness...",
+    ];
+    const DogIcon = () => (
+      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+        fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M10 5.172C10 3.782 8.423 2.679 6.5 3c-2.823.47-4.113 6.006-4 7 .08.703 1.725 1.722 3.656 1 1.261-.472 1.96-1.45 2.344-2.5"/>
+        <path d="M14.267 5.172c0-1.39 1.577-2.493 3.5-2.172 2.823.47 4.113 6.006 4 7-.08.703-1.725 1.722-3.656 1-1.261-.472-1.855-1.45-2.239-2.5"/>
+        <path d="M8 14v.5"/><path d="M16 14v.5"/>
+        <path d="M11.25 16.25h1.5L12 17l-.75-.75Z"/>
+        <path d="M4.42 11.247A13.152 13.152 0 0 0 4 14.556C4 18.728 7.582 21 12 21s8-2.272 8-6.444c0-1.061-.162-2.2-.493-3.309m-9.243-6.082A8.801 8.801 0 0 1 12 5c.78 0 1.5.108 2.161.306"/>
+      </svg>
+    );
+    const RefreshIcon = () => (
+      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+        fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+        <path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/>
+        <path d="M16 16h5v5"/>
+      </svg>
+    );
+
+    function TypingText({ text }) {
+      const [displayed, setDisplayed] = useState('');
+      const [done, setDone] = useState(false);
+      useEffect(() => {
+        setDisplayed(''); setDone(false);
+        let i = 0;
+        const iv = setInterval(() => {
+          i++;
+          setDisplayed(text.slice(0, i));
+          if (i >= text.length) { clearInterval(iv); setDone(true); }
+        }, 40);
+        return () => clearInterval(iv);
+      }, [text]);
+      return (
+        <span className="inline">
+          {displayed}
+          {!done && <span className="inline-block w-0.5 h-5 bg-purple-400 ml-0.5 animate-pulse align-middle" />}
+        </span>
+      );
+    }
+
+    function App() {
+      const [dogUrl, setDogUrl] = useState(null);
+      const [breed, setBreed] = useState('');
+      const [breedFact, setBreedFact] = useState('');
+      const [loading, setLoading] = useState(true);
+      const [scanning, setScanning] = useState(false);
+      const [thought, setThought] = useState(null);
+      const [boopCount, setBoopCount] = useState(0);
+      const [wobbling, setWobbling] = useState(false);
+      const [noseWiggle, setNoseWiggle] = useState(false);
+      const [showDivine, setShowDivine] = useState(false);
+      const [ripples, setRipples] = useState([]);
+      const [uploadedUrl, setUploadedUrl] = useState(null);
+      const [isUserDog, setIsUserDog] = useState(false);
+      const [bioScanning, setBioScanning] = useState(false);
+      const [bioPhase, setBioPhase] = useState('');
+      const [verified, setVerified] = useState(false);
+      const containerRef = useRef(null);
+      const fileInputRef = useRef(null);
+
+      // The displayed image is either the uploaded one or the API one
+      const displayUrl = isUserDog ? uploadedUrl : dogUrl;
+      const displayBreed = isUserDog ? 'Your Bestie' : breed;
+      const displayFact = isUserDog ? 'Certified 100% good boy/girl by Pawspective AI.' : breedFact;
+
+      const fetchDog = useCallback(async () => {
+        setLoading(true); setThought(null); setScanning(false);
+        try {
+          const res = await fetch('https://dog.ceo/api/breeds/image/random');
+          const data = await res.json();
+          if (data.status === 'success') {
+            setDogUrl(data.message);
+            const b = extractBreed(data.message);
+            setBreed(b);
+            setBreedFact(getBreedFact(b));
+          }
+        } catch (e) { console.error(e); }
+        finally { setLoading(false); }
+      }, []);
+
+      useEffect(() => { fetchDog(); }, [fetchDog]);
+
+      const handleFileUpload = (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        const url = URL.createObjectURL(file);
+        setUploadedUrl(url);
+        setIsUserDog(true);
+        setThought(null);
+        setScanning(false);
+        setBoopCount(0);
+        setVerified(false);
+
+        // Start bio-scan sequence
+        setBioScanning(true);
+        const phases = BIO_SCAN_PHASES;
+        let i = 0;
+        setBioPhase(phases[0]);
+        const iv = setInterval(() => {
+          i++;
+          if (i < phases.length) {
+            setBioPhase(phases[i]);
+          } else {
+            clearInterval(iv);
+            setBioScanning(false);
+            setBioPhase('');
+            setVerified(true);
+            playSparkle();
+            confetti({
+              particleCount: 60, spread: 60, origin: { y: 0.5 },
+              colors: ['#39ff14', '#ffd700', '#a78bfa'],
+            });
+          }
+        }, 1000);
+
+        // Reset file input so same file can be re-selected
+        e.target.value = '';
+      };
+
+      const handleNoseBoop = (e) => {
+        if (loading || bioScanning) return;
+        if (isUserDog && !verified) return;
+        e.stopPropagation();
+
+        const rect = containerRef.current.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+
+        // Ripple from click point
+        const id = Date.now();
+        setRipples(prev => [...prev, { id, x, y }]);
+        setTimeout(() => setRipples(prev => prev.filter(r => r.id !== id)), 700);
+
+        // Jello wobble on image
+        setWobbling(false);
+        requestAnimationFrame(() => setWobbling(true));
+        setTimeout(() => setWobbling(false), 600);
+
+        // Nose wiggle
+        setNoseWiggle(false);
+        requestAnimationFrame(() => setNoseWiggle(true));
+        setTimeout(() => setNoseWiggle(false), 500);
+
+        // Divine overlay
+        setShowDivine(true);
+        setTimeout(() => setShowDivine(false), 1500);
+
+        // Sound
+        playSparkle();
+
+        // Count + confetti
+        const newCount = boopCount + 1;
+        setBoopCount(newCount);
+        if (newCount % 5 === 0) {
+          confetti({
+            particleCount: 100, spread: 80, origin: { y: 0.5 },
+            colors: ['#ffd700', '#fff8dc', '#a78bfa', '#f472b6'],
+          });
+        }
+      };
+
+      const handleTranslate = () => {
+        if (scanning || bioScanning) return;
+        if (isUserDog && !verified) return;
+        setScanning(true); setThought(null);
+        setTimeout(() => {
+          setScanning(false);
+          setThought(DEEP_THOUGHTS[Math.floor(Math.random() * DEEP_THOUGHTS.length)]);
+        }, 1500);
+      };
+
+      const handleSummon = () => {
+        setBoopCount(0);
+        setIsUserDog(false);
+        setUploadedUrl(null);
+        setVerified(false);
+        setBioScanning(false);
+        setBioPhase('');
+        fetchDog();
+      };
+
+      return (
+        <div className="w-full max-w-md mx-auto">
+          <div className="text-center mb-6">
+            <h1 className="text-3xl font-bold text-white tracking-tight">🐾 Pawspective</h1>
+            <p className="text-yellow-300/70 text-sm mt-1">✨ Divine Edition ✨</p>
+          </div>
+
+          <div className="glass-card rounded-3xl p-6">
+            {/* Breed Badge + Fact */}
+            {displayBreed && !loading && (
+              <div className="text-center mb-4">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-yellow-500/15 text-yellow-300 border border-yellow-500/30 capitalize">
+                  <DogIcon /> Subject: {displayBreed}
+                  {isUserDog && verified && (
+                    <span className="ml-1 text-green-400 verified-badge inline-flex"><CheckCircleIcon /></span>
+                  )}
+                </span>
+                {displayFact && (
+                  <p className="text-purple-300/70 text-xs mt-2 italic px-2">📖 {displayFact}</p>
+                )}
+              </div>
+            )}
+
+            {/* Dog Image with Cartoon Nose */}
+            <div
+              ref={containerRef}
+              className="relative w-64 h-64 mx-auto rounded-2xl overflow-visible bg-deepblue/50 mb-5 select-none"
+            >
+              <div className="w-full h-full rounded-2xl overflow-hidden">
+                {loading ? (
+                  <div className="flex items-center justify-center h-full">
+                    <div className="w-10 h-10 border-4 border-purple-500/30 border-t-purple-400 rounded-full animate-spin" />
+                  </div>
+                ) : (
+                  <>
+                    <img
+                      src={displayUrl} alt={`A ${displayBreed} dog`}
+                      className={`w-full h-full object-cover ${wobbling ? 'jello' : ''}`}
+                    />
+                    {scanning && <div className="laser-line" />}
+
+                    {/* Bio-Scan Overlay */}
+                    {bioScanning && (
+                      <div className="bio-scan-overlay rounded-2xl">
+                        <div className="laser-line" />
+                        <p className="bio-scan-text text-green-400 text-sm font-medium px-4 text-center">
+                          🧬 {bioPhase}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Verified Good Boy Badge */}
+                    {isUserDog && verified && !bioScanning && (
+                      <div className="absolute top-2 right-2 z-20 verified-badge flex items-center gap-1 px-2 py-1 rounded-full bg-green-500/20 border border-green-400/40 text-green-300 text-[10px] font-semibold">
+                        <CheckCircleIcon /> Verified Good Boy
+                      </div>
+                    )}
+
+                    {/* Ripples */}
+                    {ripples.map(r => (
+                      <div key={r.id} className="ripple" style={{ left: r.x, top: r.y }} />
+                    ))}
+
+                    {/* Divine Halo + Wings */}
+                    {showDivine && (
+                      <div className="absolute inset-0 flex flex-col items-center justify-start divine-overlay">
+                        <div className="wing-anim text-5xl mt-6 opacity-80" aria-hidden="true">🪽✨🪽</div>
+                        <div className="halo-shimmer text-4xl -mt-4" aria-hidden="true">😇</div>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+
+              {/* Cartoon Dog Nose — Boop Target */}
+              {!loading && !bioScanning && (
+                <button
+                  onClick={handleNoseBoop}
+                  className={`nose-btn ${noseWiggle ? 'nose-wiggle' : ''}`}
+                  aria-label="Boop the snoot"
+                  title="BOOP!"
+                >
+                  <svg width="56" height="44" viewBox="0 0 56 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    {/* Nose body */}
+                    <ellipse cx="28" cy="20" rx="24" ry="18" fill="#1a1a2e" stroke="#2d2d4e" strokeWidth="2"/>
+                    {/* Nose highlight */}
+                    <ellipse cx="28" cy="18" rx="20" ry="14" fill="#2a2a3e"/>
+                    {/* Shiny spot */}
+                    <ellipse cx="20" cy="13" rx="6" ry="4" fill="#4a4a6e" opacity="0.7"/>
+                    <ellipse cx="22" cy="11" rx="3" ry="2" fill="#7a7aae" opacity="0.5"/>
+                    {/* Nostrils */}
+                    <ellipse cx="19" cy="21" rx="5" ry="4" fill="#111128" />
+                    <ellipse cx="37" cy="21" rx="5" ry="4" fill="#111128" />
+                    {/* Center line */}
+                    <path d="M28 28 L28 38" stroke="#2a2a3e" strokeWidth="2" strokeLinecap="round"/>
+                    {/* Mouth curves */}
+                    <path d="M28 38 Q18 42 12 36" stroke="#2a2a3e" strokeWidth="2" strokeLinecap="round" fill="none"/>
+                    <path d="M28 38 Q38 42 44 36" stroke="#2a2a3e" strokeWidth="2" strokeLinecap="round" fill="none"/>
+                  </svg>
+                  <span className="absolute -bottom-5 left-1/2 -translate-x-1/2 text-[10px] text-yellow-300/60 font-medium whitespace-nowrap">
+                    boop the snoot
+                  </span>
+                </button>
+              )}
+            </div>
+
+            {/* Scanning Status */}
+            {scanning && (
+              <p className="text-center text-green-400 text-sm mb-4 animate-pulse">🔬 Scanning Snoot...</p>
+            )}
+
+            {/* Deep Thought */}
+            {thought && !scanning && (
+              <div className="bg-white/5 border border-purple-500/20 rounded-xl p-4 mb-5 text-center">
+                <p className="text-xs text-purple-400 mb-1">💭 Deep Thought</p>
+                <p className="text-white text-sm italic">"<TypingText text={thought} />"</p>
+              </div>
+            )}
+
+            {/* Goodness Score */}
+            <div className="text-center mb-5">
+              <p className="text-xs text-yellow-300/50 mb-0.5">Goodness Score: {boopCount}</p>
+              <p className="text-lg font-semibold text-yellow-300">{getRank(boopCount)}</p>
+            </div>
+
+            {/* Buttons */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleFileUpload}
+              className="hidden"
+              aria-label="Upload your dog photo"
+            />
+            <div className="flex gap-3 mb-3">
+              <button onClick={handleTranslate} disabled={scanning || loading || bioScanning}
+                className="gold-glass-btn flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium text-yellow-200">
+                <ScanIcon /> Translate Thoughts
+              </button>
+              <button onClick={() => fileInputRef.current?.click()} disabled={loading || bioScanning}
+                className="gold-glass-btn flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium text-yellow-200">
+                <CameraIcon /> Scan My Dog
+              </button>
+            </div>
+            <button onClick={handleSummon} disabled={loading}
+              className="gold-glass-btn w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium text-yellow-200">
+              <RefreshIcon /> Summon New Pup
+            </button>
+          </div>
+
+          <p className="text-center text-white/20 text-xs mt-6">Powered by divine intervention & dog.ceo</p>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
