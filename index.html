@@ -417,6 +417,8 @@
         try { return JSON.parse(localStorage.getItem('pawspective-favs') || '[]'); } catch(e) { return []; }
       });
       const [showFavs, setShowFavs] = useState(false);
+      const [gifUrl, setGifUrl] = useState(null);
+      const [gifLoading, setGifLoading] = useState(false);
       const containerRef = useRef(null);
       const fileInputRef = useRef(null);
 
@@ -448,6 +450,19 @@
         setThought(null);
         setScanning(false);
         setBoopCount(0);
+      };
+
+      const fetchDogGif = async () => {
+        setGifLoading(true);
+        setGifUrl(null);
+        try {
+          const res = await fetch('https://api.giphy.com/v1/gifs/random?api_key=dc6zaTOxFJmzC&tag=funny+dog');
+          const data = await res.json();
+          if (data.data?.images?.downsized?.url) {
+            setGifUrl(data.data.images.downsized.url);
+          }
+        } catch(e) { console.error(e); }
+        finally { setGifLoading(false); }
       };
 
       const fetchDog = useCallback(async () => {
@@ -545,12 +560,12 @@
         try {
           const biscuitShape = confetti.shapeFromText({ text: '🦴', scalar: 2 });
           confetti({
-            particleCount: 15, spread: 70, origin: { y: 0 },
+            particleCount: 40, spread: 100, origin: { y: 0 },
             gravity: 0.3, ticks: 600, drift: 0.5,
             shapes: [biscuitShape], scalar: 2,
           });
         } catch(e) {
-          confetti({ particleCount: 15, spread: 70, origin: { y: 0 }, gravity: 0.3, ticks: 600, drift: 0.5, colors: ['#ffd700', '#fff8dc'] });
+          confetti({ particleCount: 40, spread: 100, origin: { y: 0 }, gravity: 0.3, ticks: 600, drift: 0.5, colors: ['#ffd700', '#fff8dc'] });
         }
 
         // Extra biscuit burst every 5 boops
@@ -773,6 +788,19 @@
                     ))}
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* Dog GIF Section */}
+            <button onClick={fetchDogGif} disabled={gifLoading}
+              className="gold-glass-btn w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium text-yellow-200 mt-3"
+              style={{ borderColor: 'rgba(139, 92, 246, 0.35)' }}>
+              {gifLoading ? '🔄 Loading...' : '🎬 Watch a Pup'}
+            </button>
+            {gifUrl && (
+              <div className="mt-4 rounded-xl overflow-hidden">
+                <img src={gifUrl} alt="Funny dog gif" className="w-full rounded-xl" />
+                <p className="text-center text-white/30 text-[9px] mt-1">Powered by GIPHY</p>
               </div>
             )}
           </div>
