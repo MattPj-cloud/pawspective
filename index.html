@@ -419,6 +419,10 @@
       const [showFavs, setShowFavs] = useState(false);
       const [gifUrl, setGifUrl] = useState(null);
       const [gifLoading, setGifLoading] = useState(false);
+      const [gifFavorites, setGifFavorites] = useState(() => {
+        try { return JSON.parse(localStorage.getItem('pawspective-gif-favs') || '[]'); } catch(e) { return []; }
+      });
+      const [favTab, setFavTab] = useState('pics');
       const containerRef = useRef(null);
       const fileInputRef = useRef(null);
 
@@ -450,6 +454,21 @@
         setThought(null);
         setScanning(false);
         setBoopCount(0);
+      };
+
+      const isGifFaved = gifUrl && gifFavorites.some(f => f.url === gifUrl);
+
+      const toggleGifFavorite = () => {
+        if (!gifUrl) return;
+        let updated;
+        if (isGifFaved) {
+          updated = gifFavorites.filter(f => f.url !== gifUrl);
+        } else {
+          updated = [...gifFavorites, { url: gifUrl }];
+          playSparkle();
+        }
+        setGifFavorites(updated);
+        localStorage.setItem('pawspective-gif-favs', JSON.stringify(updated));
       };
 
       const fetchDogGif = async () => {
@@ -770,26 +789,62 @@
             <button onClick={() => setShowFavs(!showFavs)}
               className="gold-glass-btn w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium text-yellow-200 mt-3"
               style={{ borderColor: 'rgba(244, 63, 94, 0.35)' }}>
-              <HeartIcon filled={true} /> My Favorites ({favorites.length})
+              <HeartIcon filled={true} /> My Favorites ({favorites.length + gifFavorites.length})
             </button>
 
             {/* Favorites Gallery */}
             {showFavs && (
               <div className="mt-4">
-                {favorites.length === 0 ? (
-                  <p className="text-center text-white/40 text-xs">No favorites yet. Tap the heart on a dog you love!</p>
-                ) : (
-                  <div className="grid grid-cols-3 gap-2">
-                    {favorites.map((fav, i) => (
-                      <button key={i} onClick={() => loadFavorite(fav)}
-                        className="relative rounded-lg overflow-hidden aspect-square hover:ring-2 ring-yellow-400 transition-all">
-                        <img src={fav.url} alt={fav.breed} className="w-full h-full object-cover" />
-                        <span className="absolute bottom-0 left-0 right-0 bg-black/60 text-[9px] text-yellow-200 text-center py-0.5 capitalize truncate px-1">
-                          {fav.breed}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
+                {/* Tabs */}
+                <div className="flex gap-2 mb-3">
+                  <button onClick={() => setFavTab('pics')}
+                    className={'flex-1 py-1.5 rounded-lg text-xs font-medium transition-all ' + (favTab === 'pics' ? 'bg-yellow-500/20 text-yellow-300 border border-yellow-500/40' : 'bg-white/5 text-white/40 border border-white/10')}>
+                    📸 Pictures ({favorites.length})
+                  </button>
+                  <button onClick={() => setFavTab('gifs')}
+                    className={'flex-1 py-1.5 rounded-lg text-xs font-medium transition-all ' + (favTab === 'gifs' ? 'bg-purple-500/20 text-purple-300 border border-purple-500/40' : 'bg-white/5 text-white/40 border border-white/10')}>
+                    🎬 GIFs ({gifFavorites.length})
+                  </button>
+                </div>
+
+                {/* Pictures Tab */}
+                {favTab === 'pics' && (
+                  favorites.length === 0 ? (
+                    <p className="text-center text-white/40 text-xs">No favorite pictures yet. Tap the heart on a dog you love!</p>
+                  ) : (
+                    <div className="grid grid-cols-3 gap-2">
+                      {favorites.map((fav, i) => (
+                        <button key={i} onClick={() => loadFavorite(fav)}
+                          className="relative rounded-lg overflow-hidden aspect-square hover:ring-2 ring-yellow-400 transition-all">
+                          <img src={fav.url} alt={fav.breed} className="w-full h-full object-cover" />
+                          <span className="absolute bottom-0 left-0 right-0 bg-black/60 text-[9px] text-yellow-200 text-center py-0.5 capitalize truncate px-1">
+                            {fav.breed}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )
+                )}
+
+                {/* GIFs Tab */}
+                {favTab === 'gifs' && (
+                  gifFavorites.length === 0 ? (
+                    <p className="text-center text-white/40 text-xs">No favorite GIFs yet. Watch a pup and tap the heart!</p>
+                  ) : (
+                    <div className="flex flex-col gap-3">
+                      {gifFavorites.map((fav, i) => (
+                        <div key={i} className="relative rounded-xl overflow-hidden">
+                          <img src={fav.url} alt="Favorite dog gif" className="w-full rounded-xl" style={{ maxHeight: '200px', objectFit: 'contain' }} />
+                          <button onClick={() => {
+                            const updated = gifFavorites.filter(f => f.url !== fav.url);
+                            setGifFavorites(updated);
+                            localStorage.setItem('pawspective-gif-favs', JSON.stringify(updated));
+                          }}
+                            className="absolute top-2 right-2 p-1 rounded-full bg-black/50 hover:bg-black/70 text-red-400 text-xs">✕</button>
+                        </div>
+                      ))}
+                    </div>
+                  )
                 )}
               </div>
             )}
@@ -801,8 +856,15 @@
               {gifLoading ? '🔄 Loading...' : '🎬 Watch a Pup'}
             </button>
             {gifUrl && (
-              <div className="mt-4 rounded-xl overflow-hidden">
+              <div className="mt-4 rounded-xl overflow-hidden relative">
                 <img src={gifUrl} alt="Funny dog gif" className="w-full rounded-xl" style={{ maxHeight: '250px', objectFit: 'contain' }} />
+                <button
+                  onClick={toggleGifFavorite}
+                  className="absolute top-2 left-2 z-20 p-1.5 rounded-full bg-black/40 hover:bg-black/60 transition-all"
+                  aria-label={isGifFaved ? "Remove gif from favorites" : "Add gif to favorites"}
+                >
+                  <HeartIcon filled={isGifFaved} />
+                </button>
                 <p className="text-center text-white/30 text-[9px] mt-1">Powered by Tenor</p>
               </div>
             )}
