@@ -389,6 +389,13 @@
       );
     }
 
+    const HeartIcon = ({ filled }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24"
+        fill={filled ? "#f43f5e" : "none"} stroke={filled ? "#f43f5e" : "currentColor"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>
+      </svg>
+    );
+
     function App() {
       const [dogUrl, setDogUrl] = useState(null);
       const [breed, setBreed] = useState('');
@@ -406,6 +413,10 @@
       const [bioScanning, setBioScanning] = useState(false);
       const [bioPhase, setBioPhase] = useState('');
       const [verified, setVerified] = useState(false);
+      const [favorites, setFavorites] = useState(() => {
+        try { return JSON.parse(localStorage.getItem('pawspective-favs') || '[]'); } catch(e) { return []; }
+      });
+      const [showFavs, setShowFavs] = useState(false);
       const containerRef = useRef(null);
       const fileInputRef = useRef(null);
 
@@ -413,6 +424,31 @@
       const displayUrl = isUserDog ? uploadedUrl : dogUrl;
       const displayBreed = isUserDog ? 'Your Bestie' : breed;
       const displayFact = isUserDog ? 'Certified 100% good boy/girl by Pawspective AI.' : breedFact;
+      const isFaved = displayUrl && favorites.some(f => f.url === displayUrl);
+
+      const toggleFavorite = () => {
+        if (!displayUrl) return;
+        let updated;
+        if (isFaved) {
+          updated = favorites.filter(f => f.url !== displayUrl);
+        } else {
+          updated = [...favorites, { url: displayUrl, breed: displayBreed }];
+        }
+        setFavorites(updated);
+        localStorage.setItem('pawspective-favs', JSON.stringify(updated));
+        if (!isFaved) playSparkle();
+      };
+
+      const loadFavorite = (fav) => {
+        setDogUrl(fav.url);
+        setBreed(fav.breed);
+        setBreedFact(getBreedFact(fav.breed));
+        setIsUserDog(false);
+        setShowFavs(false);
+        setThought(null);
+        setScanning(false);
+        setBoopCount(0);
+      };
 
       const fetchDog = useCallback(async () => {
         setLoading(true); setThought(null); setScanning(false);
@@ -457,10 +493,16 @@
             setBioPhase('');
             setVerified(true);
             playSparkle();
-            confetti({
-              particleCount: 60, spread: 60, origin: { y: 0.5 },
-              colors: ['#39ff14', '#ffd700', '#a78bfa'],
-            });
+            try {
+              const verifiedTreats = ['🦴', '🍖', '🐾'].map(t => confetti.shapeFromText({ text: t, scalar: 2.5 }));
+              confetti({
+                particleCount: 60, spread: 60, origin: { y: 0 },
+                gravity: 0.4, ticks: 500,
+                shapes: verifiedTreats, scalar: 2.5,
+              });
+            } catch(e) {
+              confetti({ particleCount: 60, spread: 60, origin: { y: 0 }, gravity: 0.4, ticks: 500, colors: ['#ffd700', '#fff8dc', '#a78bfa'] });
+            }
           }
         }, 1000);
 
@@ -492,21 +534,37 @@
         requestAnimationFrame(() => setNoseWiggle(true));
         setTimeout(() => setNoseWiggle(false), 500);
 
-        // Divine overlay
-        setShowDivine(true);
-        setTimeout(() => setShowDivine(false), 1500);
-
         // Sound
         playSparkle();
 
-        // Count + confetti
+        // Count + biscuit rain on every boop
         const newCount = boopCount + 1;
         setBoopCount(newCount);
-        if (newCount % 5 === 0) {
+
+        // Dog biscuits falling from the sky
+        try {
+          const biscuitShape = confetti.shapeFromText({ text: '🦴', scalar: 2 });
           confetti({
-            particleCount: 100, spread: 80, origin: { y: 0.5 },
-            colors: ['#ffd700', '#fff8dc', '#a78bfa', '#f472b6'],
+            particleCount: 15, spread: 70, origin: { y: 0 },
+            gravity: 0.3, ticks: 600, drift: 0.5,
+            shapes: [biscuitShape], scalar: 2,
           });
+        } catch(e) {
+          confetti({ particleCount: 15, spread: 70, origin: { y: 0 }, gravity: 0.3, ticks: 600, drift: 0.5, colors: ['#ffd700', '#fff8dc'] });
+        }
+
+        // Extra biscuit burst every 5 boops
+        if (newCount % 5 === 0) {
+          try {
+            const treats = ['🦴', '🍖', '🐾'].map(t => confetti.shapeFromText({ text: t, scalar: 2.5 }));
+            confetti({
+              particleCount: 60, spread: 120, origin: { y: 0 },
+              gravity: 0.2, ticks: 800, drift: 0.7,
+              shapes: treats, scalar: 2.5,
+            });
+          } catch(e) {
+            confetti({ particleCount: 60, spread: 120, origin: { y: 0 }, gravity: 0.2, ticks: 800, drift: 0.7, colors: ['#ffd700', '#fff8dc', '#a78bfa'] });
+          }
         }
       };
 
@@ -593,6 +651,19 @@
                       <div key={r.id} className="ripple" style={{ left: r.x, top: r.y }} />
                     ))}
 
+                    {/* Favorite Heart Button */}
+                    {!bioScanning && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); toggleFavorite(); }}
+                        className="absolute top-2 left-2 z-20 p-1.5 rounded-full bg-black/40 hover:bg-black/60 transition-all"
+                        aria-label={isFaved ? "Remove from favorites" : "Add to favorites"}
+                        title={isFaved ? "Remove from favorites" : "Add to favorites"}
+                        style={{ transform: isFaved ? 'scale(1.1)' : 'scale(1)' }}
+                      >
+                        <HeartIcon filled={isFaved} />
+                      </button>
+                    )}
+
                     {/* Divine Halo + Wings */}
                     {showDivine && (
                       <div className="absolute inset-0 flex flex-col items-center justify-start divine-overlay">
@@ -678,6 +749,32 @@
               className="gold-glass-btn w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium text-yellow-200">
               <RefreshIcon /> Summon New Pup
             </button>
+            <button onClick={() => setShowFavs(!showFavs)}
+              className="gold-glass-btn w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium text-yellow-200 mt-3"
+              style={{ borderColor: 'rgba(244, 63, 94, 0.35)' }}>
+              <HeartIcon filled={true} /> My Favorites ({favorites.length})
+            </button>
+
+            {/* Favorites Gallery */}
+            {showFavs && (
+              <div className="mt-4">
+                {favorites.length === 0 ? (
+                  <p className="text-center text-white/40 text-xs">No favorites yet. Tap the heart on a dog you love!</p>
+                ) : (
+                  <div className="grid grid-cols-3 gap-2">
+                    {favorites.map((fav, i) => (
+                      <button key={i} onClick={() => loadFavorite(fav)}
+                        className="relative rounded-lg overflow-hidden aspect-square hover:ring-2 ring-yellow-400 transition-all">
+                        <img src={fav.url} alt={fav.breed} className="w-full h-full object-cover" />
+                        <span className="absolute bottom-0 left-0 right-0 bg-black/60 text-[9px] text-yellow-200 text-center py-0.5 capitalize truncate px-1">
+                          {fav.breed}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           <p className="text-center text-white/20 text-xs mt-6">Powered by divine intervention & dog.ceo</p>
