@@ -865,6 +865,11 @@
                 >
                   <HeartIcon filled={isGifFaved} />
                 </button>
+                <button
+                  onClick={() => setGifUrl(null)}
+                  className="absolute top-2 right-2 z-20 p-1.5 rounded-full bg-black/40 hover:bg-black/60 transition-all text-white text-xs font-bold"
+                  aria-label="Close gif"
+                >✕</button>
                 <p className="text-center text-white/30 text-[9px] mt-1">Powered by Tenor</p>
               </div>
             )}
