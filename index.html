@@ -54,14 +54,14 @@
 
     @keyframes jelloWobble {
       0% { transform: scale(1, 1); }
-      15% { transform: scale(0.95, 1.05); }
-      30% { transform: scale(1.05, 0.95); }
-      45% { transform: scale(0.97, 1.03); }
-      60% { transform: scale(1.02, 0.98); }
-      75% { transform: scale(0.99, 1.01); }
+      15% { transform: scale(0.85, 1.15); }
+      30% { transform: scale(1.15, 0.85); }
+      45% { transform: scale(0.92, 1.08); }
+      60% { transform: scale(1.06, 0.94); }
+      75% { transform: scale(0.98, 1.02); }
       100% { transform: scale(1, 1); }
     }
-    .jello { animation: jelloWobble 0.6s ease; }
+    .jello { animation: jelloWobble 0.7s ease; }
 
     @keyframes rippleOut {
       0% { transform: translate(-50%, -50%) scale(0); opacity: 0.7; }
@@ -582,12 +582,12 @@
         try {
           const biscuitShape = confetti.shapeFromText({ text: '🦴', scalar: 2 });
           confetti({
-            particleCount: 40, spread: 100, origin: { y: 0 },
+            particleCount: 80, spread: 140, origin: { y: 0 },
             gravity: 0.3, ticks: 600, drift: 0.5,
             shapes: [biscuitShape], scalar: 2,
           });
         } catch(e) {
-          confetti({ particleCount: 40, spread: 100, origin: { y: 0 }, gravity: 0.3, ticks: 600, drift: 0.5, colors: ['#ffd700', '#fff8dc'] });
+          confetti({ particleCount: 80, spread: 140, origin: { y: 0 }, gravity: 0.3, ticks: 600, drift: 0.5, colors: ['#ffd700', '#fff8dc'] });
         }
 
         // Extra biscuit burst every 5 boops
