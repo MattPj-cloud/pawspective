@@ -456,10 +456,13 @@
         setGifLoading(true);
         setGifUrl(null);
         try {
-          const res = await fetch('https://api.giphy.com/v1/gifs/random?api_key=dc6zaTOxFJmzC&tag=funny+dog');
+          const searches = ['funny dog', 'cute puppy', 'dog fail', 'puppy playing', 'dog zoomies', 'silly dog'];
+          const tag = searches[Math.floor(Math.random() * searches.length)];
+          const offset = Math.floor(Math.random() * 20);
+          const res = await fetch('https://g.tenor.com/v1/search?q=' + encodeURIComponent(tag) + '&key=LIVDSRZULELA&limit=1&pos=' + offset + '&media_filter=minimal&contentfilter=high');
           const data = await res.json();
-          if (data.data?.images?.downsized?.url) {
-            setGifUrl(data.data.images.downsized.url);
+          if (data.results && data.results.length > 0) {
+            setGifUrl(data.results[0].media[0].gif.url);
           }
         } catch(e) { console.error(e); }
         finally { setGifLoading(false); }
@@ -800,7 +803,7 @@
             {gifUrl && (
               <div className="mt-4 rounded-xl overflow-hidden">
                 <img src={gifUrl} alt="Funny dog gif" className="w-full rounded-xl" />
-                <p className="text-center text-white/30 text-[9px] mt-1">Powered by GIPHY</p>
+                <p className="text-center text-white/30 text-[9px] mt-1">Powered by Tenor</p>
               </div>
             )}
           </div>
