@@ -389,6 +389,108 @@
       );
     }
 
+    const QUIZ_QUESTIONS = [
+      { q: "How active are you?", emoji: "🏃", multi: false, key: "activity", options: [
+        { label: "Couch Potato 🛋️", value: "low" },
+        { label: "Weekend Walker 🚶", value: "medium" },
+        { label: "Marathon Runner 🏃", value: "high" },
+      ]},
+      { q: "Where do you live?", emoji: "🏠", multi: false, key: "space", options: [
+        { label: "Apartment 🏢", value: "small" },
+        { label: "House with Garden 🏡", value: "medium" },
+        { label: "Farm / Big Property 🌾", value: "large" },
+      ]},
+      { q: "Who's in your household?", emoji: "�‍👩‍👧", multi: true, key: "family", options: [
+        { label: "Just me 🧍", value: "solo" },
+        { label: "Young kids �", value: "kids" },
+        { label: "Older kids / teens 🧑‍🎓", value: "teens" },
+        { label: "Other dogs 🐕", value: "dogs" },
+        { label: "Cats �", value: "cats" },
+      ]},
+      { q: "How much grooming can you handle?", emoji: "✂️", multi: false, key: "grooming", options: [
+        { label: "Minimal please 😅", value: "low" },
+        { label: "Some brushing is fine 🪮", value: "medium" },
+        { label: "Full salon? Bring it 💅", value: "high" },
+      ]},
+      { q: "What size dog do you want?", emoji: "📏", multi: true, key: "size", options: [
+        { label: "Tiny 🐭", value: "small" },
+        { label: "Medium 🐕", value: "medium" },
+        { label: "Absolute Unit 🐻", value: "large" },
+      ]},
+      { q: "What's your climate like?", emoji: "🌡️", multi: false, key: "climate", options: [
+        { label: "Cold & snowy ❄️", value: "cold" },
+        { label: "Mild & temperate 🌤️", value: "mild" },
+        { label: "Hot & sunny ☀️", value: "hot" },
+      ]},
+      { q: "Are you a first-time dog owner?", emoji: "🐣", multi: false, key: "experience", options: [
+        { label: "Yep, total newbie 🐣", value: "beginner" },
+        { label: "Had dogs before 🐕", value: "some" },
+        { label: "Basically a dog whisperer 🧙", value: "expert" },
+      ]},
+      { q: "What matters most to you?", emoji: "💖", multi: true, key: "priorities", options: [
+        { label: "Loyalty & protection 🛡️", value: "loyal" },
+        { label: "Playfulness & fun 🎾", value: "playful" },
+        { label: "Calm & cuddly 🧸", value: "calm" },
+        { label: "Smart & trainable 🧠", value: "smart" },
+        { label: "Good with strangers 🤝", value: "social" },
+      ]},
+      { q: "How much barking is OK?", emoji: "🔊", multi: false, key: "noise", options: [
+        { label: "Silent ninja please 🤫", value: "quiet" },
+        { label: "Some barking is fine 🐕", value: "some" },
+        { label: "Let them sing! 🎤", value: "loud" },
+      ]},
+      { q: "Any allergy concerns?", emoji: "🤧", multi: false, key: "allergy", options: [
+        { label: "Yes, need hypoallergenic 🤧", value: "yes" },
+        { label: "Nope, bring on the fur 🐻", value: "no" },
+      ]},
+    ];
+
+    const BREED_MATCHES = [
+      { breed: "labrador", tags: { activity: "high", space: "medium", family: ["kids", "teens", "dogs"], grooming: "low", size: "large", climate: "mild", experience: "beginner", priorities: ["loyal", "playful", "social"], noise: "some", allergy: "no" }, desc: "Loyal, friendly, and great with families. The ultimate all-rounder." },
+      { breed: "golden", tags: { activity: "high", space: "medium", family: ["kids", "teens", "dogs"], grooming: "medium", size: "large", climate: "mild", experience: "beginner", priorities: ["loyal", "calm", "social"], noise: "some", allergy: "no" }, desc: "Gentle, smart, and endlessly patient. A golden heart in a golden coat." },
+      { breed: "corgi", tags: { activity: "medium", space: "small", family: ["kids", "teens"], grooming: "medium", size: "medium", climate: "mild", experience: "some", priorities: ["playful", "smart"], noise: "loud", allergy: "no" }, desc: "Big personality in a small package. Royal approved." },
+      { breed: "bulldog", tags: { activity: "low", space: "small", family: ["kids", "solo"], grooming: "low", size: "medium", climate: "mild", experience: "beginner", priorities: ["calm", "loyal"], noise: "quiet", allergy: "no" }, desc: "Chill, lovable, and perfectly happy on the couch with you." },
+      { breed: "poodle", tags: { activity: "medium", space: "medium", family: ["kids", "cats"], grooming: "high", size: "medium", climate: "mild", experience: "some", priorities: ["smart", "social"], noise: "some", allergy: "yes" }, desc: "Hypoallergenic, brilliant, and surprisingly athletic." },
+      { breed: "beagle", tags: { activity: "high", space: "medium", family: ["kids", "dogs"], grooming: "low", size: "medium", climate: "mild", experience: "some", priorities: ["playful", "social"], noise: "loud", allergy: "no" }, desc: "Curious nose on legs. Great with kids and always up for adventure." },
+      { breed: "chihuahua", tags: { activity: "low", space: "small", family: ["solo"], grooming: "low", size: "small", climate: "hot", experience: "some", priorities: ["loyal", "calm"], noise: "loud", allergy: "no" }, desc: "Tiny but fierce. A pocket-sized companion with a big attitude." },
+      { breed: "husky", tags: { activity: "high", space: "large", family: ["teens", "dogs"], grooming: "high", size: "large", climate: "cold", experience: "expert", priorities: ["playful", "smart"], noise: "loud", allergy: "no" }, desc: "Energetic, vocal, and stunningly beautiful. Needs lots of exercise." },
+      { breed: "pomeranian", tags: { activity: "low", space: "small", family: ["solo"], grooming: "high", size: "small", climate: "mild", experience: "beginner", priorities: ["playful", "social"], noise: "loud", allergy: "no" }, desc: "A fluffy little cloud with a bold personality." },
+      { breed: "germanshepherd", tags: { activity: "high", space: "large", family: ["kids", "teens"], grooming: "medium", size: "large", climate: "mild", experience: "expert", priorities: ["loyal", "smart"], noise: "some", allergy: "no" }, desc: "Smart, protective, and incredibly loyal. A true partner." },
+      { breed: "dachshund", tags: { activity: "medium", space: "small", family: ["solo", "teens"], grooming: "low", size: "small", climate: "mild", experience: "some", priorities: ["playful", "loyal"], noise: "some", allergy: "no" }, desc: "Brave little sausage dog. Stubborn but irresistible." },
+      { breed: "shiba", tags: { activity: "medium", space: "small", family: ["solo"], grooming: "medium", size: "medium", climate: "cold", experience: "expert", priorities: ["smart", "calm"], noise: "quiet", allergy: "no" }, desc: "Independent, clean, and full of memes. Much wow." },
+      { breed: "boxer", tags: { activity: "high", space: "medium", family: ["kids", "teens", "dogs"], grooming: "low", size: "large", climate: "mild", experience: "some", priorities: ["playful", "loyal", "social"], noise: "some", allergy: "no" }, desc: "Playful goofball that never really grows up. Great with families." },
+      { breed: "maltese", tags: { activity: "low", space: "small", family: ["solo", "cats"], grooming: "high", size: "small", climate: "hot", experience: "beginner", priorities: ["calm", "social"], noise: "some", allergy: "yes" }, desc: "Elegant lap dog that lives for cuddles and companionship." },
+      { breed: "collie", tags: { activity: "high", space: "large", family: ["kids", "teens", "dogs"], grooming: "high", size: "large", climate: "cold", experience: "some", priorities: ["smart", "loyal"], noise: "some", allergy: "no" }, desc: "Intelligent herder with a heart of gold. Lassie wasn't fiction." },
+      { breed: "newfoundland", tags: { activity: "medium", space: "large", family: ["kids", "teens", "dogs"], grooming: "high", size: "large", climate: "cold", experience: "some", priorities: ["calm", "loyal", "social"], noise: "quiet", allergy: "no" }, desc: "Gentle giant and natural swimmer. The ultimate nanny dog." },
+      { breed: "shihtzu", tags: { activity: "low", space: "small", family: ["solo", "cats"], grooming: "high", size: "small", climate: "mild", experience: "beginner", priorities: ["calm", "social"], noise: "some", allergy: "yes" }, desc: "Affectionate little lion dog. Happy anywhere you are." },
+      { breed: "vizsla", tags: { activity: "high", space: "large", family: ["teens", "dogs"], grooming: "low", size: "large", climate: "mild", experience: "some", priorities: ["loyal", "playful"], noise: "some", allergy: "no" }, desc: "The ultimate Velcro dog. Athletic, loving, never leaves your side." },
+    ];
+
+    function matchBreed(answers) {
+      const keys = QUIZ_QUESTIONS.map(function(q) { return q.key; });
+      var maxScore = QUIZ_QUESTIONS.length * 2;
+      var scored = BREED_MATCHES.map(function(b) {
+        var score = 0;
+        QUIZ_QUESTIONS.forEach(function(q, i) {
+          var answer = answers[i];
+          var breedVal = b.tags[q.key];
+          if (Array.isArray(answer) && Array.isArray(breedVal)) {
+            var overlap = answer.filter(function(a) { return breedVal.indexOf(a) !== -1; });
+            if (overlap.length > 0) score += Math.min(2, overlap.length);
+          } else if (Array.isArray(answer)) {
+            if (answer.indexOf(breedVal) !== -1) score += 2;
+          } else if (Array.isArray(breedVal)) {
+            if (breedVal.indexOf(answer) !== -1) score += 2;
+          } else {
+            if (answer === breedVal) score += 2;
+          }
+        });
+        return { breed: b.breed, desc: b.desc, score: score, pct: Math.round((score / maxScore) * 100) };
+      });
+      scored.sort(function(a, b) { return b.score - a.score; });
+      return scored.slice(0, 3);
+    }
+
     const HeartIcon = ({ filled }) => (
       <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24"
         fill={filled ? "#f43f5e" : "none"} stroke={filled ? "#f43f5e" : "currentColor"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -397,6 +499,12 @@
     );
 
     function App() {
+      const [appTab, setAppTab] = useState('rate');
+      const [quizStep, setQuizStep] = useState(0);
+      const [quizAnswers, setQuizAnswers] = useState([]);
+      const [quizMultiSelected, setQuizMultiSelected] = useState([]);
+      const [quizResult, setQuizResult] = useState(null);
+      const [quizDogImgs, setQuizDogImgs] = useState({});
       const [dogUrl, setDogUrl] = useState(null);
       const [breed, setBreed] = useState('');
       const [breedFact, setBreedFact] = useState('');
@@ -485,6 +593,64 @@
           }
         } catch(e) { console.error(e); }
         finally { setGifLoading(false); }
+      };
+
+      const handleQuizAnswer = async (value) => {
+        var currentQ = QUIZ_QUESTIONS[quizStep];
+        var newAnswers;
+        if (currentQ.multi) {
+          // For multi-select, toggle the value in quizMultiSelected
+          if (quizMultiSelected.indexOf(value) !== -1) {
+            setQuizMultiSelected(quizMultiSelected.filter(function(v) { return v !== value; }));
+          } else {
+            setQuizMultiSelected([...quizMultiSelected, value]);
+          }
+          return;
+        }
+        // Single select - submit immediately
+        newAnswers = [...quizAnswers, value];
+        submitAnswers(newAnswers);
+      };
+
+      const handleMultiSubmit = () => {
+        if (quizMultiSelected.length === 0) return;
+        var newAnswers = [...quizAnswers, quizMultiSelected];
+        setQuizMultiSelected([]);
+        submitAnswers(newAnswers);
+      };
+
+      const submitAnswers = async (newAnswers) => {
+        setQuizAnswers(newAnswers);
+        if (newAnswers.length >= QUIZ_QUESTIONS.length) {
+          const results = matchBreed(newAnswers);
+          setQuizResult(results);
+          var imgs = {};
+          for (var i = 0; i < results.length; i++) {
+            try {
+              var res = await fetch('https://dog.ceo/api/breed/' + results[i].breed + '/images/random');
+              var data = await res.json();
+              if (data.status === 'success') imgs[results[i].breed] = data.message;
+            } catch(e) { console.error(e); }
+          }
+          setQuizDogImgs(imgs);
+          playSparkle();
+          try {
+            var treats = ['🐾', '🦴', '🎉'].map(function(t) { return confetti.shapeFromText({ text: t, scalar: 2 }); });
+            confetti({ particleCount: 80, spread: 120, origin: { y: 0.3 }, shapes: treats, scalar: 2 });
+          } catch(e) {
+            confetti({ particleCount: 80, spread: 120, origin: { y: 0.3 }, colors: ['#ffd700', '#a78bfa', '#f472b6'] });
+          }
+        } else {
+          setQuizStep(newAnswers.length);
+        }
+      };
+
+      const resetQuiz = () => {
+        setQuizStep(0);
+        setQuizAnswers([]);
+        setQuizMultiSelected([]);
+        setQuizResult(null);
+        setQuizDogImgs({});
       };
 
       const fetchDog = useCallback(async () => {
@@ -632,6 +798,86 @@
             <p className="text-yellow-300/70 text-sm mt-1">✨ Divine Edition ✨</p>
           </div>
 
+          {/* App Tabs */}
+          <div className="flex gap-2 mb-4">
+            <button onClick={() => setAppTab('rate')}
+              className={'flex-1 py-2 rounded-xl text-sm font-medium transition-all ' + (appTab === 'rate' ? 'bg-yellow-500/20 text-yellow-300 border border-yellow-500/40' : 'bg-white/5 text-white/40 border border-white/10')}>
+              🐕 Rate Pups
+            </button>
+            <button onClick={() => setAppTab('match')}
+              className={'flex-1 py-2 rounded-xl text-sm font-medium transition-all ' + (appTab === 'match' ? 'bg-purple-500/20 text-purple-300 border border-purple-500/40' : 'bg-white/5 text-white/40 border border-white/10')}>
+              🔮 Find My Match
+            </button>
+          </div>
+
+          {/* Match Quiz Tab */}
+          {appTab === 'match' && (
+            <div className="glass-card rounded-3xl p-6">
+              {!quizResult ? (
+                <div>
+                  <div className="text-center mb-5">
+                    <p className="text-white/50 text-xs mb-1">Question {quizStep + 1} of {QUIZ_QUESTIONS.length}</p>
+                    <div className="w-full bg-white/10 rounded-full h-1.5 mb-4">
+                      <div className="bg-purple-400 h-1.5 rounded-full transition-all" style={{ width: ((quizStep) / QUIZ_QUESTIONS.length * 100) + '%' }} />
+                    </div>
+                    <p className="text-3xl mb-2">{QUIZ_QUESTIONS[quizStep].emoji}</p>
+                    <p className="text-white text-lg font-medium">{QUIZ_QUESTIONS[quizStep].q}</p>
+                    {QUIZ_QUESTIONS[quizStep].multi && (
+                      <p className="text-purple-300/60 text-xs mt-1">Select all that apply</p>
+                    )}
+                  </div>
+                  <div className="flex flex-col gap-3">
+                    {QUIZ_QUESTIONS[quizStep].options.map(function(opt, i) {
+                      var isSelected = QUIZ_QUESTIONS[quizStep].multi && quizMultiSelected.indexOf(opt.value) !== -1;
+                      return (
+                        <button key={i} onClick={function() { handleQuizAnswer(opt.value); }}
+                          className={'w-full px-4 py-3 rounded-xl text-sm font-medium transition-all ' + (isSelected ? 'bg-purple-500/30 text-purple-200 border border-purple-400/60 scale-[1.02]' : 'gold-glass-btn text-yellow-200 hover:scale-[1.02]')}>
+                          {isSelected ? '✓ ' : ''}{opt.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {QUIZ_QUESTIONS[quizStep].multi && (
+                    <button onClick={handleMultiSubmit} disabled={quizMultiSelected.length === 0}
+                      className="gold-glass-btn w-full mt-4 px-4 py-2.5 rounded-xl text-sm font-medium text-yellow-200 disabled:opacity-30">
+                      Next →
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <div className="text-center">
+                  <p className="text-purple-300 text-xs mb-4">🔮 Your Top 3 Matches</p>
+                  {quizResult.map(function(match, idx) {
+                    var medals = ['🥇', '🥈', '🥉'];
+                    return (
+                      <div key={idx} className={'rounded-2xl p-4 mb-4 ' + (idx === 0 ? 'bg-yellow-500/10 border border-yellow-500/30' : 'bg-white/5 border border-white/10')}>
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-lg font-bold text-yellow-300 capitalize">{medals[idx]} {match.breed}</span>
+                          <span className={'text-xs font-semibold px-2 py-0.5 rounded-full ' + (idx === 0 ? 'bg-yellow-500/20 text-yellow-300' : 'bg-white/10 text-white/60')}>{match.pct}% match</span>
+                        </div>
+                        {quizDogImgs[match.breed] && (
+                          <div className="w-full h-40 rounded-xl overflow-hidden mb-3">
+                            <img src={quizDogImgs[match.breed]} alt={match.breed} className="w-full h-full object-cover" />
+                          </div>
+                        )}
+                        <p className="text-white/70 text-sm italic mb-1">"{match.desc}"</p>
+                        {BREED_FACTS[match.breed] && (
+                          <p className="text-purple-300/50 text-xs">📖 {BREED_FACTS[match.breed]}</p>
+                        )}
+                      </div>
+                    );
+                  })}
+                  <button onClick={resetQuiz}
+                    className="gold-glass-btn w-full px-4 py-2.5 rounded-xl text-sm font-medium text-yellow-200 mt-2">
+                    🔄 Try Again
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Rate Pups Tab */}
+          {appTab === 'rate' && (
           <div className="glass-card rounded-3xl p-6">
             {/* Breed Badge + Fact */}
             {displayBreed && !loading && (
@@ -874,6 +1120,7 @@
               </div>
             )}
           </div>
+          )}
 
           <p className="text-center text-white/20 text-xs mt-6">Powered by divine intervention & dog.ceo</p>
         </div>
