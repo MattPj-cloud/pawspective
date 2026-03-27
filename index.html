@@ -503,6 +503,49 @@
       // Games sub-page
       var [gamePage, setGamePage] = useState(null);
 
+      // Pixel Art state
+      var PIXEL_GRID = 8;
+      var [pixelImg, setPixelImg] = useState(null);
+      var [pixelBreed, setPixelBreed] = useState('');
+      var [pixelRevealed, setPixelRevealed] = useState([]);
+      var [pixelDone, setPixelDone] = useState(false);
+      var [pixelGuess, setPixelGuess] = useState('');
+      var [pixelGuessResult, setPixelGuessResult] = useState(null);
+      var [pixelLoading, setPixelLoading] = useState(false);
+      var pixelTotal = PIXEL_GRID * PIXEL_GRID;
+      var pixelRevealedCount = pixelRevealed.filter(function(r){return r;}).length;
+
+      function startPixelArt(){
+        setPixelLoading(true);setPixelDone(false);setPixelGuess('');setPixelGuessResult(null);
+        setPixelRevealed(new Array(PIXEL_GRID*PIXEL_GRID).fill(false));
+        fetch('https://dog.ceo/api/breeds/image/random').then(function(r){return r.json();}).then(function(data){
+          if(data.status==='success'){
+            setPixelImg(data.message);
+            setPixelBreed(extractBreed(data.message));
+          }
+        }).catch(function(e){console.error(e);}).finally(function(){setPixelLoading(false);});
+      }
+      function revealPixel(idx){
+        if(pixelDone||pixelRevealed[idx])return;
+        var newR=pixelRevealed.slice();newR[idx]=true;setPixelRevealed(newR);
+        var count=newR.filter(function(r){return r;}).length;
+        if(count>=pixelTotal){setPixelDone(true);playSparkle();doConfetti({particleCount:60,spread:100,origin:{y:0.3},emojis:['🎨','🐾']});}
+      }
+      function revealRandom5(){
+        if(pixelDone)return;
+        var hidden=[];pixelRevealed.forEach(function(r,i){if(!r)hidden.push(i);});
+        var toReveal=shuffleArray(hidden).slice(0,5);
+        var newR=pixelRevealed.slice();toReveal.forEach(function(i){newR[i]=true;});setPixelRevealed(newR);
+        var count=newR.filter(function(r){return r;}).length;
+        if(count>=pixelTotal){setPixelDone(true);playSparkle();doConfetti({particleCount:60,spread:100,origin:{y:0.3},emojis:['🎨','🐾']});}
+      }
+      function checkPixelGuess(){
+        if(pixelGuess.toLowerCase().trim()===pixelBreed.toLowerCase().trim()){
+          setPixelGuessResult('correct');setPixelDone(true);setPixelRevealed(new Array(pixelTotal).fill(true));
+          playSparkle();doConfetti({particleCount:80,spread:120,origin:{y:0.3},emojis:['🎨','🐾','🎉']});
+        } else { setPixelGuessResult('wrong'); }
+      }
+
       function selectEncBreed(b){
         setEncBreed(b);setEncImg(null);
         var apiPath=b.indexOf('/')!==-1?'breed/'+b.split('/')[0]+'/'+b.split('/')[1]:'breed/'+b;
@@ -658,6 +701,7 @@
                 <button onClick={function(){setGamePage('slots');}} className="btn rounded-2xl p-4 text-center"><p className="text-3xl mb-1">🎰</p><p className="text-sm font-medium text-yellow-200">Slots</p><p className="text-[10px] text-white/30">Match breeds</p></button>
                 <button onClick={function(){setGamePage('trivia');resetTrivia();}} className="btn rounded-2xl p-4 text-center"><p className="text-3xl mb-1">📝</p><p className="text-sm font-medium text-yellow-200">Trivia</p><p className="text-[10px] text-white/30">Test your knowledge</p></button>
                 <button onClick={function(){setGamePage('scramble');startScramble();}} className="btn rounded-2xl p-4 text-center"><p className="text-3xl mb-1">🔀</p><p className="text-sm font-medium text-yellow-200">Scramble</p><p className="text-[10px] text-white/30">Unscramble breeds</p></button>
+                <button onClick={function(){setGamePage('pixel');startPixelArt();}} className="btn rounded-2xl p-4 text-center col-span-2"><p className="text-3xl mb-1">🎨</p><p className="text-sm font-medium text-yellow-200">Pixel Art</p><p className="text-[10px] text-white/30">Reveal the hidden dog</p></button>
               </div>
             </div>
           )}
@@ -809,6 +853,66 @@
                 <div className="text-center">
                   <button onClick={startScramble} className="btn px-6 py-3 rounded-xl text-sm font-medium text-yellow-200">🔀 Start Scramble</button>
                 </div>
+              )}
+            </div>
+          )}
+
+          {/* ═══ PIXEL ART GAME ═══ */}
+          {page==='games' && gamePage==='pixel' && (
+            <div className="glass-card rounded-3xl p-5">
+              <button onClick={function(){setGamePage(null);}} className="text-xs text-yellow-300/60 hover:text-yellow-300 mb-3 inline-block">← Back to Games</button>
+              <div className="text-center mb-3">
+                <p className="text-xl font-bold text-white">🎨 Pixel Reveal</p>
+                <p className="text-white/40 text-xs mt-1">Tap tiles to reveal the hidden dog. Guess the breed!</p>
+                <p className="text-yellow-300/50 text-xs mt-1">Revealed: {pixelRevealedCount}/{pixelTotal}</p>
+              </div>
+              {pixelLoading ? (
+                <div className="flex items-center justify-center py-8"><div className="w-10 h-10 border-4 border-purple-500/30 border-t-purple-400 rounded-full animate-spin"/></div>
+              ) : pixelImg ? (
+                <div>
+                  <div className="mx-auto mb-3 relative" style={{width:'256px',height:'256px'}}>
+                    {pixelRevealed.map(function(revealed,idx){
+                      var row=Math.floor(idx/PIXEL_GRID);var col=idx%PIXEL_GRID;
+                      var cellSize=256/PIXEL_GRID;
+                      return (
+                        <div key={idx} onClick={function(){revealPixel(idx);}}
+                          style={{position:'absolute',left:(col*cellSize)+'px',top:(row*cellSize)+'px',width:cellSize+'px',height:cellSize+'px',
+                            backgroundImage:revealed?'url('+pixelImg+')':'none',
+                            backgroundSize:'256px 256px',
+                            backgroundPosition:'-'+(col*cellSize)+'px -'+(row*cellSize)+'px',
+                            backgroundColor:revealed?'transparent':'#1a1a3e',
+                            border:'1px solid rgba(255,255,255,0.08)',
+                            cursor:revealed?'default':'pointer',
+                            transition:'all 0.2s ease',
+                          }}
+                          className={!revealed?'hover:bg-purple-900/50':''}
+                        />
+                      );
+                    })}
+                  </div>
+                  {!pixelDone && (
+                    <div className="mb-3">
+                      <button onClick={revealRandom5} className="btn w-full px-3 py-2 rounded-xl text-xs font-medium text-yellow-200 mb-2">✨ Reveal 5 Random Tiles</button>
+                      <div className="flex gap-2">
+                        <input type="text" value={pixelGuess} onChange={function(e){setPixelGuess(e.target.value);}} onKeyDown={function(e){if(e.key==='Enter')checkPixelGuess();}} placeholder="Guess the breed..." className="flex-1 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-sm placeholder-white/30 outline-none focus:border-yellow-500/40"/>
+                        <button onClick={checkPixelGuess} disabled={!pixelGuess.trim()} className="btn px-4 py-2 rounded-xl text-xs font-medium text-yellow-200">Guess</button>
+                      </div>
+                      {pixelGuessResult==='wrong' && <p className="text-red-400 text-xs mt-1 text-center">Not quite! Keep revealing tiles.</p>}
+                    </div>
+                  )}
+                  {pixelDone && (
+                    <div className="text-center">
+                      {pixelGuessResult==='correct' ? (
+                        <p className="text-green-400 text-sm font-medium mb-2">🎉 You guessed it! It's a <span className="capitalize text-yellow-300">{pixelBreed}</span>!</p>
+                      ) : (
+                        <p className="text-yellow-300 text-sm font-medium mb-2">It's a <span className="capitalize">{pixelBreed}</span>!</p>
+                      )}
+                      <button onClick={startPixelArt} className="btn w-full px-3 py-2 rounded-xl text-sm font-medium text-yellow-200">🎨 New Picture</button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="text-center"><button onClick={startPixelArt} className="btn px-6 py-3 rounded-xl text-sm font-medium text-yellow-200">🎨 Start</button></div>
               )}
             </div>
           )}
