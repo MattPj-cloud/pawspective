@@ -512,11 +512,12 @@
       var [pixelGuess, setPixelGuess] = useState('');
       var [pixelGuessResult, setPixelGuessResult] = useState(null);
       var [pixelLoading, setPixelLoading] = useState(false);
+      var [pixelHint, setPixelHint] = useState(false);
       var pixelTotal = PIXEL_GRID * PIXEL_GRID;
       var pixelRevealedCount = pixelRevealed.filter(function(r){return r;}).length;
 
       function startPixelArt(){
-        setPixelLoading(true);setPixelDone(false);setPixelGuess('');setPixelGuessResult(null);
+        setPixelLoading(true);setPixelDone(false);setPixelGuess('');setPixelGuessResult(null);setPixelHint(false);
         setPixelRevealed(new Array(PIXEL_GRID*PIXEL_GRID).fill(false));
         fetch('https://dog.ceo/api/breeds/image/random').then(function(r){return r.json();}).then(function(data){
           if(data.status==='success'){
@@ -892,7 +893,12 @@
                   </div>
                   {!pixelDone && (
                     <div className="mb-3">
-                      <button onClick={revealRandom5} className="btn w-full px-3 py-2 rounded-xl text-xs font-medium text-yellow-200 mb-2">✨ Reveal 5 Random Tiles</button>
+                      <div className="flex gap-2 mb-2">
+                        <button onClick={revealRandom5} className="btn flex-1 px-3 py-2 rounded-xl text-xs font-medium text-yellow-200">✨ Reveal 5 Tiles</button>
+                        <button onClick={function(){setPixelHint(true);}} className="btn flex-1 px-3 py-2 rounded-xl text-xs font-medium text-yellow-200">💡 Clue</button>
+                        <button onClick={function(){setPixelRevealed(new Array(pixelTotal).fill(true));setPixelDone(true);}} className="btn flex-1 px-3 py-2 rounded-xl text-xs font-medium text-yellow-200" style={{borderColor:'rgba(239,68,68,0.3)'}}>🏳️ Give Up</button>
+                      </div>
+                      {pixelHint && <p className="text-yellow-300/60 text-xs text-center mb-2">💡 It starts with "{pixelBreed[0].toUpperCase()}", has {pixelBreed.length} letters, and is a {pixelBreed.length<=5?'short':'longer'} word</p>}
                       <div className="flex gap-2">
                         <input type="text" value={pixelGuess} onChange={function(e){setPixelGuess(e.target.value);}} onKeyDown={function(e){if(e.key==='Enter')checkPixelGuess();}} placeholder="Guess the breed..." className="flex-1 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-sm placeholder-white/30 outline-none focus:border-yellow-500/40"/>
                         <button onClick={checkPixelGuess} disabled={!pixelGuess.trim()} className="btn px-4 py-2 rounded-xl text-xs font-medium text-yellow-200">Guess</button>
