@@ -412,6 +412,97 @@
       }
 
       // ── ENCYCLOPEDIA HANDLERS ──
+
+      // Slot Machine state
+      var SLOT_BREEDS = ['labrador','corgi','husky','poodle','beagle','bulldog','golden','shiba','boxer'];
+      var [slotReels, setSlotReels] = useState(['🐕','🐕','🐕']);
+      var [slotBreeds, setSlotBreeds] = useState(['?','?','?']);
+      var [slotSpinning, setSlotSpinning] = useState(false);
+      var [slotResult, setSlotResult] = useState(null);
+      var [slotWins, setSlotWins] = useState(0);
+      var SLOT_EMOJIS = ['🐕','🐩','🦮','🐕‍🦺','🐶','🐾','🦴','🐺','🐻'];
+
+      function spinSlots(){
+        if(slotSpinning)return;
+        setSlotSpinning(true);setSlotResult(null);
+        var spins=0;var maxSpins=15;
+        var iv=setInterval(function(){
+          spins++;
+          setSlotReels([SLOT_EMOJIS[Math.floor(Math.random()*SLOT_EMOJIS.length)],SLOT_EMOJIS[Math.floor(Math.random()*SLOT_EMOJIS.length)],SLOT_EMOJIS[Math.floor(Math.random()*SLOT_EMOJIS.length)]]);
+          setSlotBreeds([SLOT_BREEDS[Math.floor(Math.random()*SLOT_BREEDS.length)],SLOT_BREEDS[Math.floor(Math.random()*SLOT_BREEDS.length)],SLOT_BREEDS[Math.floor(Math.random()*SLOT_BREEDS.length)]]);
+          if(spins>=maxSpins){
+            clearInterval(iv);
+            var final=[SLOT_BREEDS[Math.floor(Math.random()*SLOT_BREEDS.length)],SLOT_BREEDS[Math.floor(Math.random()*SLOT_BREEDS.length)],SLOT_BREEDS[Math.floor(Math.random()*SLOT_BREEDS.length)]];
+            // 20% chance of jackpot
+            if(Math.random()<0.2){final=[final[0],final[0],final[0]];}
+            // 30% chance of pair
+            else if(Math.random()<0.3){final=[final[0],final[0],final[2]];}
+            setSlotBreeds(final);
+            setSlotReels([SLOT_EMOJIS[Math.floor(Math.random()*SLOT_EMOJIS.length)],SLOT_EMOJIS[Math.floor(Math.random()*SLOT_EMOJIS.length)],SLOT_EMOJIS[Math.floor(Math.random()*SLOT_EMOJIS.length)]]);
+            setSlotSpinning(false);
+            if(final[0]===final[1]&&final[1]===final[2]){setSlotResult('jackpot');setSlotWins(slotWins+3);playSparkle();doConfetti({particleCount:100,spread:140,origin:{y:0.3},emojis:['🎰','🦴','🎉']});}
+            else if(final[0]===final[1]||final[1]===final[2]||final[0]===final[2]){setSlotResult('pair');setSlotWins(slotWins+1);playSparkle();}
+            else{setSlotResult('miss');}
+          }
+        },100);
+      }
+
+      // Trivia state
+      var TRIVIA_QUESTIONS = Object.keys(BREED_FACTS).map(function(breed){
+        var fact=BREED_FACTS[breed];
+        var others=Object.keys(BREED_FACTS).filter(function(b){return b!==breed;});
+        var wrong=shuffleArray(others).slice(0,3);
+        var options=shuffleArray([breed].concat(wrong));
+        return {fact:fact,answer:breed,options:options};
+      });
+      var [triviaIdx, setTriviaIdx] = useState(0);
+      var [triviaScore, setTriviaScore] = useState(0);
+      var [triviaTotal, setTriviaTotal] = useState(0);
+      var [triviaAnswer, setTriviaAnswer] = useState(null);
+      var [triviaQuestions, setTriviaQuestions] = useState(function(){return shuffleArray(TRIVIA_QUESTIONS).slice(0,10);});
+
+      function answerTrivia(breed){
+        if(triviaAnswer!==null)return;
+        setTriviaAnswer(breed);setTriviaTotal(triviaTotal+1);
+        if(breed===triviaQuestions[triviaIdx].answer){setTriviaScore(triviaScore+1);playSparkle();}
+      }
+      function nextTrivia(){
+        if(triviaIdx+1>=triviaQuestions.length){
+          // Quiz over
+          return;
+        }
+        setTriviaIdx(triviaIdx+1);setTriviaAnswer(null);
+      }
+      function resetTrivia(){setTriviaIdx(0);setTriviaScore(0);setTriviaTotal(0);setTriviaAnswer(null);setTriviaQuestions(shuffleArray(TRIVIA_QUESTIONS).slice(0,10));}
+
+      // Scramble state
+      var SCRAMBLE_BREEDS = Object.keys(BREED_FACTS);
+      var [scrambleBreed, setScrambleBreed] = useState(null);
+      var [scrambleImg, setScrambleImg] = useState(null);
+      var [scrambleLetters, setScrambleLetters] = useState('');
+      var [scrambleGuess, setScrambleGuess] = useState('');
+      var [scrambleResult, setScrambleResult] = useState(null);
+      var [scrambleScore, setScrambleScore] = useState(0);
+      var [scrambleHint, setScrambleHint] = useState(false);
+
+      function startScramble(){
+        var b=SCRAMBLE_BREEDS[Math.floor(Math.random()*SCRAMBLE_BREEDS.length)];
+        setScrambleBreed(b);setScrambleGuess('');setScrambleResult(null);setScrambleHint(false);setScrambleImg(null);
+        var letters=shuffleArray(b.split('')).join('');
+        while(letters===b){letters=shuffleArray(b.split('')).join('');}
+        setScrambleLetters(letters);
+        fetch('https://dog.ceo/api/breed/'+b+'/images/random').then(function(r){return r.json();}).then(function(data){
+          if(data.status==='success')setScrambleImg(data.message);
+        }).catch(function(){});
+      }
+      function checkScramble(){
+        if(scrambleGuess.toLowerCase().trim()===scrambleBreed){setScrambleResult('correct');setScrambleScore(scrambleScore+1);playSparkle();doConfetti({particleCount:60,spread:100,origin:{y:0.3},emojis:['🐾','🎉']});}
+        else{setScrambleResult('wrong');}
+      }
+
+      // Games sub-page
+      var [gamePage, setGamePage] = useState(null);
+
       function selectEncBreed(b){
         setEncBreed(b);setEncImg(null);
         var apiPath=b.indexOf('/')!==-1?'breed/'+b.split('/')[0]+'/'+b.split('/')[1]:'breed/'+b;
@@ -425,7 +516,7 @@
       var NAV = [
         {id:'home',label:'🐕 Rate',emoji:'🐕'},
         {id:'match',label:'🔮 Match',emoji:'🔮'},
-        {id:'puzzle',label:'🧩 Puzzle',emoji:'🧩'},
+        {id:'games',label:'🎮 Games',emoji:'🎮'},
         {id:'breeds',label:'📖 Breeds',emoji:'📖'},
         {id:'favs',label:'❤️ Favs',emoji:'❤️'},
       ];
@@ -555,16 +646,32 @@
             </div>
           )}
 
-          {/* ═══ PUZZLE PAGE ═══ */}
-          {page==='puzzle' && (
+          {/* ═══ GAMES HUB ═══ */}
+          {page==='games' && !gamePage && (
             <div className="glass-card rounded-3xl p-5">
+              <div className="text-center mb-4">
+                <p className="text-xl font-bold text-white">🎮 Games</p>
+                <p className="text-white/40 text-xs mt-1">Pick a game to play</p>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <button onClick={function(){setGamePage('puzzle');}} className="btn rounded-2xl p-4 text-center"><p className="text-3xl mb-1">🧩</p><p className="text-sm font-medium text-yellow-200">Jigsaw</p><p className="text-[10px] text-white/30">Swap tiles</p></button>
+                <button onClick={function(){setGamePage('slots');}} className="btn rounded-2xl p-4 text-center"><p className="text-3xl mb-1">🎰</p><p className="text-sm font-medium text-yellow-200">Slots</p><p className="text-[10px] text-white/30">Match breeds</p></button>
+                <button onClick={function(){setGamePage('trivia');resetTrivia();}} className="btn rounded-2xl p-4 text-center"><p className="text-3xl mb-1">📝</p><p className="text-sm font-medium text-yellow-200">Trivia</p><p className="text-[10px] text-white/30">Test your knowledge</p></button>
+                <button onClick={function(){setGamePage('scramble');startScramble();}} className="btn rounded-2xl p-4 text-center"><p className="text-3xl mb-1">🔀</p><p className="text-sm font-medium text-yellow-200">Scramble</p><p className="text-[10px] text-white/30">Unscramble breeds</p></button>
+              </div>
+            </div>
+          )}
+
+          {/* ═══ JIGSAW GAME ═══ */}
+          {page==='games' && gamePage==='puzzle' && (
+            <div className="glass-card rounded-3xl p-5">
+              <button onClick={function(){setGamePage(null);}} className="text-xs text-yellow-300/60 hover:text-yellow-300 mb-3 inline-block">← Back to Games</button>
               <div className="text-center mb-4">
                 <p className="text-xl font-bold text-white">🧩 Dog Jigsaw</p>
                 <p className="text-white/40 text-xs mt-1">Swap tiles to complete the picture</p>
               </div>
               {!puzzleTiles ? (
                 <div className="text-center">
-                  <p className="text-white/50 text-sm mb-4">Fetch a random dog photo and unscramble it!</p>
                   <button onClick={startPuzzle} disabled={puzzleLoading} className="btn px-6 py-3 rounded-xl text-sm font-medium text-yellow-200">{puzzleLoading?'⏳ Loading...':'🐕 Start Puzzle'}</button>
                 </div>
               ) : (
@@ -577,8 +684,6 @@
                   <div className="grid grid-cols-3 gap-1 mx-auto mb-3" style={{width:'252px',height:'252px'}}>
                     {puzzleTiles.map(function(tileIdx,pos){
                       var row=Math.floor(tileIdx/GRID);var col=tileIdx%GRID;
-                      var pctX = col * (100/(GRID-1));
-                      var pctY = row * (100/(GRID-1));
                       return (
                         <div key={pos} onClick={function(){handleTileClick(pos);}}
                           className={'puzzle-tile rounded-lg overflow-hidden '+(puzzleSelected===pos?'selected':'')}
@@ -593,6 +698,116 @@
                       <p className="text-yellow-300 text-sm font-medium">Completed in {puzzleMoves} moves!</p>
                     </div>
                   )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ═══ SLOT MACHINE GAME ═══ */}
+          {page==='games' && gamePage==='slots' && (
+            <div className="glass-card rounded-3xl p-5">
+              <button onClick={function(){setGamePage(null);}} className="text-xs text-yellow-300/60 hover:text-yellow-300 mb-3 inline-block">← Back to Games</button>
+              <div className="text-center mb-4">
+                <p className="text-xl font-bold text-white">🎰 Dog Slots</p>
+                <p className="text-white/40 text-xs mt-1">Match 3 breeds for a jackpot!</p>
+                <p className="text-yellow-300 text-xs mt-1">🦴 Wins: {slotWins}</p>
+              </div>
+              <div className="flex justify-center gap-3 mb-4">
+                {slotReels.map(function(emoji,i){
+                  return <div key={i} className={'w-24 h-28 rounded-2xl bg-deepblue/80 border border-white/10 flex flex-col items-center justify-center '+(slotSpinning?'animate-pulse':'')}>
+                    <span className="text-3xl mb-1">{emoji}</span>
+                    <span className="text-[10px] text-yellow-300/70 capitalize font-medium">{slotBreeds[i]}</span>
+                  </div>;
+                })}
+              </div>
+              {slotResult && !slotSpinning && (
+                <div className="text-center mb-3">
+                  {slotResult==='jackpot' && <p className="text-yellow-300 text-lg font-bold">🎉 JACKPOT! Triple {slotBreeds[0]}! +3 🦴</p>}
+                  {slotResult==='pair' && <p className="text-green-400 text-sm font-medium">🐾 Nice! A pair! +1 🦴</p>}
+                  {slotResult==='miss' && <p className="text-white/40 text-sm">No match. Try again!</p>}
+                </div>
+              )}
+              <button onClick={spinSlots} disabled={slotSpinning} className="btn w-full px-4 py-3 rounded-xl text-sm font-medium text-yellow-200">{slotSpinning?'🎰 Spinning...':'🎰 SPIN!'}</button>
+            </div>
+          )}
+
+          {/* ═══ TRIVIA GAME ═══ */}
+          {page==='games' && gamePage==='trivia' && (
+            <div className="glass-card rounded-3xl p-5">
+              <button onClick={function(){setGamePage(null);}} className="text-xs text-yellow-300/60 hover:text-yellow-300 mb-3 inline-block">← Back to Games</button>
+              <div className="text-center mb-4">
+                <p className="text-xl font-bold text-white">📝 Dog Trivia</p>
+                <p className="text-white/40 text-xs mt-1">Score: {triviaScore}/{triviaTotal}</p>
+              </div>
+              {triviaIdx < triviaQuestions.length ? (
+                <div>
+                  <div className="w-full bg-white/10 rounded-full h-1.5 mb-3"><div className="bg-purple-400 h-1.5 rounded-full transition-all" style={{width:((triviaIdx)/triviaQuestions.length*100)+'%'}}/></div>
+                  <p className="text-xs text-white/40 mb-1">Question {triviaIdx+1} of {triviaQuestions.length}</p>
+                  <div className="bg-white/5 border border-purple-500/20 rounded-xl p-3 mb-4">
+                    <p className="text-white text-sm italic">"{triviaQuestions[triviaIdx].fact}"</p>
+                    <p className="text-purple-300/60 text-xs mt-2">Which breed is this about?</p>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    {triviaQuestions[triviaIdx].options.map(function(opt,i){
+                      var isCorrect = opt===triviaQuestions[triviaIdx].answer;
+                      var cls = 'w-full px-3 py-2.5 rounded-xl text-sm font-medium transition-all capitalize ';
+                      if(triviaAnswer===null){cls+='btn text-yellow-200';}
+                      else if(isCorrect){cls+='bg-green-500/20 text-green-300 border border-green-400/40';}
+                      else if(opt===triviaAnswer){cls+='bg-red-500/20 text-red-300 border border-red-400/40';}
+                      else{cls+='btn text-yellow-200 opacity-40';}
+                      return <button key={i} onClick={function(){answerTrivia(opt);}} disabled={triviaAnswer!==null} className={cls}>{opt}</button>;
+                    })}
+                  </div>
+                  {triviaAnswer!==null && (
+                    <button onClick={nextTrivia} className="btn w-full mt-3 px-3 py-2 rounded-xl text-sm font-medium text-yellow-200">
+                      {triviaIdx+1>=triviaQuestions.length?'See Results':'Next →'}
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <div className="text-center">
+                  <p className="text-4xl mb-3">{triviaScore>=8?'🏆':triviaScore>=5?'🎉':'🐾'}</p>
+                  <p className="text-yellow-300 text-lg font-bold mb-1">You scored {triviaScore}/{triviaQuestions.length}</p>
+                  <p className="text-white/40 text-sm mb-4">{triviaScore>=8?'Dog expert!':triviaScore>=5?'Not bad!':'Keep learning!'}</p>
+                  <button onClick={resetTrivia} className="btn w-full px-4 py-2.5 rounded-xl text-sm font-medium text-yellow-200">🔄 Play Again</button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ═══ SCRAMBLE GAME ═══ */}
+          {page==='games' && gamePage==='scramble' && (
+            <div className="glass-card rounded-3xl p-5">
+              <button onClick={function(){setGamePage(null);}} className="text-xs text-yellow-300/60 hover:text-yellow-300 mb-3 inline-block">← Back to Games</button>
+              <div className="text-center mb-4">
+                <p className="text-xl font-bold text-white">🔀 Breed Scramble</p>
+                <p className="text-white/40 text-xs mt-1">Streak: {scrambleScore} 🔥</p>
+              </div>
+              {scrambleBreed ? (
+                <div>
+                  {scrambleImg && <div className="w-48 h-48 mx-auto rounded-2xl overflow-hidden mb-3"><img src={scrambleImg} alt="Mystery dog" className="w-full h-full object-cover"/></div>}
+                  <div className="text-center mb-3">
+                    <p className="text-2xl font-bold text-purple-300 tracking-widest uppercase mb-1">{scrambleLetters}</p>
+                    {scrambleHint && <p className="text-xs text-yellow-300/50">Hint: starts with "{scrambleBreed[0].toUpperCase()}" and has {scrambleBreed.length} letters</p>}
+                  </div>
+                  {scrambleResult===null ? (
+                    <div>
+                      <input type="text" value={scrambleGuess} onChange={function(e){setScrambleGuess(e.target.value);}} onKeyDown={function(e){if(e.key==='Enter')checkScramble();}} placeholder="Type the breed name..." className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-sm placeholder-white/30 mb-2 outline-none focus:border-yellow-500/40"/>
+                      <div className="flex gap-2">
+                        <button onClick={checkScramble} disabled={!scrambleGuess.trim()} className="btn flex-1 px-3 py-2 rounded-xl text-sm font-medium text-yellow-200">Check ✓</button>
+                        <button onClick={function(){setScrambleHint(true);}} className="btn px-3 py-2 rounded-xl text-sm font-medium text-yellow-200">💡 Hint</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center">
+                      {scrambleResult==='correct' ? <p className="text-green-400 text-sm font-medium mb-2">🎉 Correct! It's {scrambleBreed}!</p> : <p className="text-red-400 text-sm font-medium mb-2">❌ Nope! It was <span className="capitalize text-yellow-300">{scrambleBreed}</span></p>}
+                      <button onClick={startScramble} className="btn w-full px-3 py-2 rounded-xl text-sm font-medium text-yellow-200">Next Word →</button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="text-center">
+                  <button onClick={startScramble} className="btn px-6 py-3 rounded-xl text-sm font-medium text-yellow-200">🔀 Start Scramble</button>
                 </div>
               )}
             </div>
