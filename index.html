@@ -223,8 +223,7 @@
       return true;
     }
 
-    // ── ENCYCLOPEDIA BREED LIST ──
-    var ENCYCLOPEDIA_BREEDS = Object.keys(BREED_FACTS).sort();
+    // ── ENCYCLOPEDIA: loaded from API ──
 
     // ── COMPONENTS ──
     function TypingText({text}) {
@@ -284,6 +283,26 @@
       var [encBreed, setEncBreed] = useState(null);
       var [encImg, setEncImg] = useState(null);
       var [encSearch, setEncSearch] = useState('');
+      var [allBreeds, setAllBreeds] = useState([]);
+
+      // Fetch full breed list from API
+      useEffect(function(){
+        fetch('https://dog.ceo/api/breeds/list/all').then(function(r){return r.json();}).then(function(data){
+          if(data.status==='success'){
+            var list=[];
+            Object.keys(data.message).forEach(function(breed){
+              var subs=data.message[breed];
+              if(subs.length===0){list.push(breed);}
+              else{subs.forEach(function(sub){list.push(breed+'/'+sub);});}
+            });
+            list.sort(function(a,b){
+              var aName=a.replace('/',' ');var bName=b.replace('/',' ');
+              return aName.localeCompare(bName);
+            });
+            setAllBreeds(list);
+          }
+        }).catch(function(e){console.error(e);});
+      },[]);
 
       // Derived
       var displayUrl = isUserDog ? uploadedUrl : dogUrl;
@@ -395,11 +414,12 @@
       // ── ENCYCLOPEDIA HANDLERS ──
       function selectEncBreed(b){
         setEncBreed(b);setEncImg(null);
-        fetch('https://dog.ceo/api/breed/'+b+'/images/random').then(function(r){return r.json();}).then(function(data){
+        var apiPath=b.indexOf('/')!==-1?'breed/'+b.split('/')[0]+'/'+b.split('/')[1]:'breed/'+b;
+        fetch('https://dog.ceo/api/'+apiPath+'/images/random').then(function(r){return r.json();}).then(function(data){
           if(data.status==='success')setEncImg(data.message);
         }).catch(function(){});
       }
-      var filteredBreeds = ENCYCLOPEDIA_BREEDS.filter(function(b){return b.toLowerCase().indexOf(encSearch.toLowerCase())!==-1;});
+      var filteredBreeds = allBreeds.filter(function(b){return b.replace('/',' ').toLowerCase().indexOf(encSearch.toLowerCase())!==-1;});
 
       // ── NAV ──
       var NAV = [
@@ -585,14 +605,15 @@
                 <div>
                   <div className="text-center mb-4">
                     <p className="text-xl font-bold text-white">📖 Breed Encyclopedia</p>
-                    <p className="text-white/40 text-xs mt-1">{ENCYCLOPEDIA_BREEDS.length} breeds to explore</p>
+                    <p className="text-white/40 text-xs mt-1">{allBreeds.length} breeds to explore</p>
                   </div>
                   <input type="text" value={encSearch} onChange={function(e){setEncSearch(e.target.value);}} placeholder="Search breeds..." className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-sm placeholder-white/30 mb-3 outline-none focus:border-yellow-500/40"/>
                   <div className="max-h-80 overflow-y-auto pr-1" style={{scrollbarWidth:'thin',scrollbarColor:'rgba(250,204,21,0.3) transparent'}}>
                     {filteredBreeds.map(function(b){
+                      var displayName = b.indexOf('/')!==-1 ? b.split('/')[1]+' '+b.split('/')[0] : b;
                       return (
                         <button key={b} onClick={function(){selectEncBreed(b);}} className="w-full text-left px-3 py-2 rounded-lg hover:bg-white/5 transition-all flex items-center justify-between group">
-                          <span className="text-sm text-white/70 capitalize group-hover:text-yellow-300">{b}</span>
+                          <span className="text-sm text-white/70 capitalize group-hover:text-yellow-300">{displayName}</span>
                           <span className="text-white/20 text-xs">→</span>
                         </button>
                       );
@@ -604,14 +625,21 @@
                 <div>
                   <button onClick={function(){setEncBreed(null);setEncImg(null);}} className="text-xs text-yellow-300/60 hover:text-yellow-300 mb-3 inline-block">← Back to breeds</button>
                   <div className="text-center">
-                    <h2 className="text-xl font-bold text-yellow-300 capitalize mb-3">{encBreed}</h2>
-                    {encImg ? (
-                      <div className="w-56 h-56 mx-auto rounded-2xl overflow-hidden mb-3"><img src={encImg} alt={encBreed} className="w-full h-full object-cover"/></div>
-                    ) : (
-                      <div className="w-56 h-56 mx-auto rounded-2xl bg-deepblue/50 flex items-center justify-center mb-3"><div className="w-8 h-8 border-4 border-purple-500/30 border-t-purple-400 rounded-full animate-spin"/></div>
-                    )}
-                    <p className="text-white/60 text-sm italic mb-3">📖 {BREED_FACTS[encBreed]}</p>
-                    <button onClick={function(){selectEncBreed(encBreed);}} className="btn px-4 py-2 rounded-xl text-xs font-medium text-yellow-200">🔄 New Photo</button>
+                    {(function(){
+                      var displayName = encBreed.indexOf('/')!==-1 ? encBreed.split('/')[1]+' '+encBreed.split('/')[0] : encBreed;
+                      var factKey = encBreed.replace('/','').toLowerCase();
+                      var fact = BREED_FACTS[factKey] || BREED_FACTS[encBreed.split('/')[0]] || "A wonderful dog breed!";
+                      return (<>
+                        <h2 className="text-xl font-bold text-yellow-300 capitalize mb-3">{displayName}</h2>
+                        {encImg ? (
+                          <div className="w-56 h-56 mx-auto rounded-2xl overflow-hidden mb-3"><img src={encImg} alt={displayName} className="w-full h-full object-cover"/></div>
+                        ) : (
+                          <div className="w-56 h-56 mx-auto rounded-2xl bg-deepblue/50 flex items-center justify-center mb-3"><div className="w-8 h-8 border-4 border-purple-500/30 border-t-purple-400 rounded-full animate-spin"/></div>
+                        )}
+                        <p className="text-white/60 text-sm italic mb-3">📖 {fact}</p>
+                        <button onClick={function(){selectEncBreed(encBreed);}} className="btn px-4 py-2 rounded-xl text-xs font-medium text-yellow-200">🔄 New Photo</button>
+                      </>);
+                    })()}
                   </div>
                 </div>
               )}
