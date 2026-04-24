@@ -448,17 +448,19 @@
           img.onload=function(){
             setScanPhase('Identifying breed...');
             // Get more predictions to find dog breeds among them
-            model.classify(img,10).then(function(predictions){
+            model.classify(img,20).then(function(predictions){
               // Filter to only dog breed predictions
               var dogPreds=predictions.filter(function(p){return isDogBreed(p.className);});
 
               var results;
               if(dogPreds.length>0){
-                // Normalize probabilities among dog predictions
+                // Normalize probabilities among dog predictions but cap at 95% to show uncertainty
                 var totalProb=dogPreds.reduce(function(sum,p){return sum+p.probability;},0);
-                results=dogPreds.slice(0,5).map(function(p){
+                results=dogPreds.slice(0,5).map(function(p,idx){
                   var breedName=cleanBreedName(p.className);
                   var normalizedConf=totalProb>0?Math.round((p.probability/totalProb)*100):Math.round(p.probability*100);
+                  // Cap top result at 95% to convey this is a best guess
+                  if(idx===0 && normalizedConf>95) normalizedConf=95;
                   var factKey=breedName.replace(/[\s-]+/g,'').toLowerCase();
                   var fact=BREED_FACTS[factKey]||null;
                   if(!fact){
@@ -791,7 +793,7 @@
             <div className="glass-card rounded-3xl p-5">
               <div className="text-center mb-4">
                 <p className="text-xl font-bold text-white">📸 Breed Scanner</p>
-                <p className="text-white/40 text-xs mt-1">Snap a photo of any dog to identify its breed</p>
+                <p className="text-white/40 text-xs mt-1">Snap a photo of any dog and our AI will have a go at guessing the breed</p>
               </div>
 
               {!scanImageUrl ? (
@@ -808,7 +810,7 @@
                       inp.onchange=handleScanUpload;inp.click();
                     }} className="btn flex-1 flex items-center justify-center gap-1.5 px-3 py-3 rounded-xl text-sm font-medium text-yellow-200">🖼️ Upload</button>
                   </div>
-                  <p className="text-white/20 text-[10px] mt-3">Powered by TensorFlow.js MobileNet — runs entirely in your browser</p>
+                  <p className="text-white/20 text-[10px] mt-3">Powered by TensorFlow.js — AI best guesses, not always paw-fect! 🐾</p>
                 </div>
               ) : (
                 <div>
@@ -827,7 +829,7 @@
                   {/* Results */}
                   {scanResults && (
                     <div className="mb-4">
-                      <p className="text-center text-purple-300 text-xs mb-3">🧬 Breed Analysis Results</p>
+                      <p className="text-center text-purple-300 text-xs mb-3">🧬 Best Guesses (AI-powered)</p>
                       {scanResults.map(function(result,idx){
                         var isTop=idx===0;
                         return (
