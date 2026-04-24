@@ -97,10 +97,23 @@
     }
     .scan-pulse-ring { animation: scanPulseRing 1.5s ease-in-out infinite; }
     .confidence-bar { transition: width 0.8s ease-out; }
+    .walk-map { border-radius: 16px; overflow: hidden; z-index: 1; }
+    .walk-map .leaflet-control-zoom { margin-top: 10px !important; margin-right: 10px !important; }
+    .walk-map .leaflet-control-zoom a { background: rgba(10,14,39,0.85) !important; color: #facc15 !important; border-color: rgba(250,204,21,0.3) !important; }
+    .walk-map .leaflet-control-zoom a:hover { background: rgba(250,204,21,0.15) !important; }
+    .leaflet-popup-content-wrapper { background: rgba(10,14,39,0.95) !important; color: white !important; border: 1px solid rgba(250,204,21,0.3) !important; border-radius: 12px !important; }
+    .leaflet-popup-tip { background: rgba(10,14,39,0.95) !important; }
+    .leaflet-popup-content { margin: 10px 14px !important; font-family: 'Space Grotesk', sans-serif !important; }
+    .saved-walk-card { transition: all 0.2s ease; }
+    .saved-walk-card:hover { background: rgba(250,204,21,0.08); border-color: rgba(250,204,21,0.4); }
   </style>
 </head>
 <body class="bg-midnight min-h-screen flex items-start justify-center p-4">
   <div id="root"></div>
+  <!-- Leaflet.js for maps -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
   <!-- TensorFlow.js + MobileNet for breed scanning -->
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.17.0"></script>
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@2.1.1"></script>
@@ -495,6 +508,127 @@
       }
 
       function resetScan(){setScanImageUrl(null);setScanResults(null);setScanPhase('');setScanActive(false);}
+
+      // ── DOG WALKS STATE ──
+      var [walkUserPos, setWalkUserPos] = useState(null);
+      var [walkPlaces, setWalkPlaces] = useState([]);
+      var [walkLoading, setWalkLoading] = useState(false);
+      var [walkError, setWalkError] = useState(null);
+      var [walkSelected, setWalkSelected] = useState(null);
+      var [savedWalks, setSavedWalks] = useState(function(){try{return JSON.parse(localStorage.getItem('paws-walks')||'[]');}catch(e){return[];}});
+      var [walkView, setWalkView] = useState('map'); // 'map' or 'saved'
+      var walkMapRef = useRef(null);
+      var walkMapInstance = useRef(null);
+      var walkMarkersRef = useRef([]);
+
+      function saveWalk(place){
+        if(savedWalks.some(function(w){return w.id===place.id;})) return;
+        var updated=[].concat(savedWalks,[place]);
+        setSavedWalks(updated);localStorage.setItem('paws-walks',JSON.stringify(updated));
+        playSparkle();
+      }
+      function removeWalk(placeId){
+        var updated=savedWalks.filter(function(w){return w.id!==placeId;});
+        setSavedWalks(updated);localStorage.setItem('paws-walks',JSON.stringify(updated));
+      }
+      function isWalkSaved(placeId){return savedWalks.some(function(w){return w.id===placeId;});}
+
+      function getDistance(lat1,lon1,lat2,lon2){
+        var R=6371;var dLat=(lat2-lat1)*Math.PI/180;var dLon=(lon2-lon1)*Math.PI/180;
+        var a=Math.sin(dLat/2)*Math.sin(dLat/2)+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)*Math.sin(dLon/2);
+        var c=2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));return R*c;
+      }
+
+      function fetchWalkPlaces(lat,lon){
+        setWalkLoading(true);setWalkError(null);setWalkPlaces([]);
+        // Query Overpass API for parks, dog parks, nature reserves, and recreation grounds nearby
+        var radius=5000; // 5km
+        var query='[out:json][timeout:15];(node["leisure"="park"](around:'+radius+','+lat+','+lon+');node["leisure"="dog_park"](around:'+radius+','+lat+','+lon+');node["leisure"="nature_reserve"](around:'+radius+','+lat+','+lon+');way["leisure"="park"](around:'+radius+','+lat+','+lon+');way["leisure"="dog_park"](around:'+radius+','+lat+','+lon+');way["leisure"="nature_reserve"](around:'+radius+','+lat+','+lon+');node["leisure"="recreation_ground"](around:'+radius+','+lat+','+lon+');way["leisure"="recreation_ground"](around:'+radius+','+lat+','+lon+'););out center 50;';
+        fetch('https://overpass-api.de/api/interpreter',{method:'POST',body:'data='+encodeURIComponent(query)})
+        .then(function(r){return r.json();})
+        .then(function(data){
+          if(data.elements){
+            var places=data.elements.filter(function(el){
+              return el.tags&&el.tags.name;
+            }).map(function(el){
+              var elLat=el.lat||el.center&&el.center.lat;
+              var elLon=el.lon||el.center&&el.center.lon;
+              var dist=getDistance(lat,lon,elLat,elLon);
+              var type=el.tags.leisure||'park';
+              var isDogPark=type==='dog_park'||(el.tags.dog==='yes');
+              return {
+                id:el.id,name:el.tags.name,lat:elLat,lon:elLon,
+                type:type,isDogPark:isDogPark,
+                distance:Math.round(dist*10)/10,
+                tags:el.tags
+              };
+            });
+            places.sort(function(a,b){return a.distance-b.distance;});
+            setWalkPlaces(places);
+          }
+        })
+        .catch(function(err){console.error(err);setWalkError('Could not load nearby places. Try again.');})
+        .finally(function(){setWalkLoading(false);});
+      }
+
+      function initWalkMap(){
+        setWalkError(null);
+        if(!navigator.geolocation){setWalkError('Geolocation is not supported by your browser.');return;}
+        setWalkLoading(true);
+        navigator.geolocation.getCurrentPosition(
+          function(pos){
+            var lat=pos.coords.latitude;var lon=pos.coords.longitude;
+            setWalkUserPos({lat:lat,lon:lon});
+            fetchWalkPlaces(lat,lon);
+          },
+          function(err){setWalkLoading(false);setWalkError('Location access denied. Please enable location services and try again.');},
+          {enableHighAccuracy:true,timeout:10000}
+        );
+      }
+
+      // Initialize/update Leaflet map when walk data changes
+      useEffect(function(){
+        if(page!=='walks'||!walkUserPos||!walkMapRef.current) return;
+
+        // Create map if it doesn't exist
+        if(!walkMapInstance.current){
+          var map=L.map(walkMapRef.current,{zoomControl:true}).setView([walkUserPos.lat,walkUserPos.lon],13);
+          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+            attribution:'© OpenStreetMap',maxZoom:18
+          }).addTo(map);
+          // User location marker
+          var userIcon=L.divIcon({className:'',html:'<div style="width:16px;height:16px;background:#facc15;border:3px solid #0a0e27;border-radius:50%;box-shadow:0 0 10px rgba(250,204,21,0.6);"></div>',iconSize:[16,16],iconAnchor:[8,8]});
+          L.marker([walkUserPos.lat,walkUserPos.lon],{icon:userIcon}).addTo(map).bindPopup('<div style="text-align:center;"><b style="color:#facc15;">📍 You are here</b></div>');
+          walkMapInstance.current=map;
+          // Fix map rendering in hidden containers
+          setTimeout(function(){map.invalidateSize();},200);
+        }
+
+        // Clear old markers
+        walkMarkersRef.current.forEach(function(m){walkMapInstance.current.removeLayer(m);});
+        walkMarkersRef.current=[];
+
+        // Add place markers
+        walkPlaces.forEach(function(place){
+          var color=place.isDogPark?'#22c55e':place.type==='nature_reserve'?'#3b82f6':'#a78bfa';
+          var emoji=place.isDogPark?'🐕':place.type==='nature_reserve'?'🌲':'🌳';
+          var icon=L.divIcon({className:'',html:'<div style="font-size:20px;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.5));">'+emoji+'</div>',iconSize:[24,24],iconAnchor:[12,12]});
+          var marker=L.marker([place.lat,place.lon],{icon:icon}).addTo(walkMapInstance.current);
+          var saved=isWalkSaved(place.id);
+          marker.bindPopup('<div><b style="color:#facc15;">'+place.name+'</b><br/><span style="color:rgba(255,255,255,0.5);font-size:11px;">'+place.distance+' km away · '+(place.isDogPark?'🐕 Dog Park':place.type==='nature_reserve'?'🌲 Nature Reserve':'🌳 Park')+'</span><br/><a href="https://www.google.com/maps/dir/?api=1&destination='+place.lat+','+place.lon+'" target="_blank" style="color:#facc15;font-size:11px;text-decoration:underline;">Get Directions →</a></div>');
+          marker.on('click',function(){setWalkSelected(place);});
+          walkMarkersRef.current.push(marker);
+        });
+      },[page,walkUserPos,walkPlaces]);
+
+      // Cleanup map on page change
+      useEffect(function(){
+        return function(){
+          if(walkMapInstance.current&&page!=='walks'){
+            walkMapInstance.current.remove();walkMapInstance.current=null;walkMarkersRef.current=[];
+          }
+        };
+      },[page]);
       function fetchDogGif(){
         setGifLoading(true);setGifUrl(null);
         var searches=['funny dog','cute puppy','dog fail','puppy playing','dog zoomies','silly dog'];
@@ -700,6 +834,7 @@
       var NAV = [
         {id:'home',label:'🐕 Rate',emoji:'🐕'},
         {id:'scan',label:'📸 Scan',emoji:'📸'},
+        {id:'walks',label:'🗺️ Walks',emoji:'🗺️'},
         {id:'match',label:'🔮 Match',emoji:'🔮'},
         {id:'games',label:'🎮 Games',emoji:'🎮'},
         {id:'breeds',label:'📖 Breeds',emoji:'📖'},
@@ -1190,6 +1325,140 @@
                       </>);
                     })()}
                   </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ═══ DOG WALKS PAGE ═══ */}
+          {page==='walks' && (
+            <div className="glass-card rounded-3xl p-5">
+              <div className="text-center mb-4">
+                <p className="text-xl font-bold text-white">🗺️ Dog Walks</p>
+                <p className="text-white/40 text-xs mt-1">Find parks and trails near you for walkies</p>
+              </div>
+
+              {/* Tab toggle: Map vs Saved */}
+              <div className="flex gap-2 mb-4">
+                <button onClick={function(){setWalkView('map');}} className={'flex-1 py-1.5 rounded-lg text-xs font-medium transition-all '+(walkView==='map'?'bg-yellow-500/20 text-yellow-300 border border-yellow-500/40':'bg-white/5 text-white/40 border border-white/10')}>🗺️ Nearby</button>
+                <button onClick={function(){setWalkView('saved');}} className={'flex-1 py-1.5 rounded-lg text-xs font-medium transition-all '+(walkView==='saved'?'bg-purple-500/20 text-purple-300 border border-purple-500/40':'bg-white/5 text-white/40 border border-white/10')}>📌 Saved ({savedWalks.length})</button>
+              </div>
+
+              {walkView==='map' && (
+                <div>
+                  {!walkUserPos && !walkLoading && !walkError && (
+                    <div className="text-center py-6">
+                      <span className="text-5xl mb-3 block">🐕‍🦺</span>
+                      <p className="text-white/50 text-sm mb-4">Find dog-friendly parks and walks near your location</p>
+                      <button onClick={initWalkMap} className="btn px-6 py-3 rounded-xl text-sm font-medium text-yellow-200">📍 Find Walks Near Me</button>
+                    </div>
+                  )}
+
+                  {walkLoading && !walkUserPos && (
+                    <div className="text-center py-8">
+                      <div className="w-10 h-10 border-4 border-purple-500/30 border-t-purple-400 rounded-full animate-spin mx-auto mb-3"/>
+                      <p className="text-white/40 text-xs">Getting your location...</p>
+                    </div>
+                  )}
+
+                  {walkError && (
+                    <div className="text-center py-6">
+                      <p className="text-red-400/80 text-sm mb-3">⚠️ {walkError}</p>
+                      <button onClick={initWalkMap} className="btn px-4 py-2 rounded-xl text-xs font-medium text-yellow-200">🔄 Try Again</button>
+                    </div>
+                  )}
+
+                  {walkUserPos && (
+                    <div>
+                      {/* Map container */}
+                      <div ref={walkMapRef} className="walk-map w-full mb-3" style={{height:'280px'}}/>
+
+                      {walkLoading && (
+                        <div className="text-center py-3">
+                          <div className="w-8 h-8 border-4 border-purple-500/30 border-t-purple-400 rounded-full animate-spin mx-auto mb-2"/>
+                          <p className="text-white/40 text-xs">Sniffing out nearby parks...</p>
+                        </div>
+                      )}
+
+                      {!walkLoading && walkPlaces.length===0 && !walkError && (
+                        <p className="text-center text-white/30 text-xs py-3">No parks found nearby. Try a different area.</p>
+                      )}
+
+                      {/* Place list */}
+                      {!walkLoading && walkPlaces.length>0 && (
+                        <div>
+                          <p className="text-white/40 text-[10px] mb-2">🌳 {walkPlaces.length} places found within 5km</p>
+                          <div className="max-h-60 overflow-y-auto pr-1" style={{scrollbarWidth:'thin',scrollbarColor:'rgba(250,204,21,0.3) transparent'}}>
+                            {walkPlaces.map(function(place){
+                              var saved=isWalkSaved(place.id);
+                              var isSelected=walkSelected&&walkSelected.id===place.id;
+                              return (
+                                <div key={place.id} onClick={function(){
+                                  setWalkSelected(place);
+                                  if(walkMapInstance.current){walkMapInstance.current.setView([place.lat,place.lon],15);}
+                                }} className={'saved-walk-card rounded-xl p-3 mb-2 cursor-pointer border '+(isSelected?'bg-yellow-500/10 border-yellow-500/30':'bg-white/5 border-white/10')}>
+                                  <div className="flex items-start justify-between">
+                                    <div className="flex-1 min-w-0">
+                                      <p className={'text-sm font-medium truncate '+(isSelected?'text-yellow-300':'text-white/80')}>{place.isDogPark?'🐕 ':place.type==='nature_reserve'?'🌲 ':'🌳 '}{place.name}</p>
+                                      <p className="text-white/40 text-[10px] mt-0.5">{place.distance} km away · {place.isDogPark?'Dog Park':place.type==='nature_reserve'?'Nature Reserve':place.type==='recreation_ground'?'Recreation Ground':'Park'}</p>
+                                    </div>
+                                    <div className="flex gap-1 ml-2 flex-shrink-0">
+                                      <button onClick={function(e){e.stopPropagation();if(saved){removeWalk(place.id);}else{saveWalk(place);}}} className={'p-1.5 rounded-lg transition-all '+(saved?'bg-yellow-500/20 text-yellow-300':'bg-white/5 text-white/30 hover:text-yellow-300')} title={saved?'Remove from saved':'Save this walk'}>
+                                        {saved?'📌':'📍'}
+                                      </button>
+                                      <a href={'https://www.google.com/maps/dir/?api=1&destination='+place.lat+','+place.lon} target="_blank" rel="noopener noreferrer" onClick={function(e){e.stopPropagation();}} className="p-1.5 rounded-lg bg-white/5 text-white/30 hover:text-yellow-300 transition-all" title="Get directions">
+                                        🧭
+                                      </a>
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      <button onClick={function(){
+                        if(walkMapInstance.current){walkMapInstance.current.remove();walkMapInstance.current=null;walkMarkersRef.current=[];}
+                        setWalkUserPos(null);setWalkPlaces([]);setWalkSelected(null);setWalkError(null);
+                      }} className="btn w-full mt-2 px-3 py-2 rounded-xl text-xs font-medium text-yellow-200">🔄 Search Again</button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {walkView==='saved' && (
+                <div>
+                  {savedWalks.length===0 ? (
+                    <div className="text-center py-6">
+                      <span className="text-4xl mb-2 block">📌</span>
+                      <p className="text-white/30 text-sm">No saved walks yet</p>
+                      <p className="text-white/20 text-xs mt-1">Find walks on the map and tap 📍 to save them</p>
+                    </div>
+                  ) : (
+                    <div>
+                      {savedWalks.map(function(walk){
+                        return (
+                          <div key={walk.id} className="saved-walk-card rounded-xl p-3 mb-2 bg-white/5 border border-white/10">
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-white/80 truncate">{walk.isDogPark?'🐕 ':walk.type==='nature_reserve'?'🌲 ':'🌳 '}{walk.name}</p>
+                                <p className="text-white/40 text-[10px] mt-0.5">{walk.distance} km · {walk.isDogPark?'Dog Park':walk.type==='nature_reserve'?'Nature Reserve':'Park'}</p>
+                              </div>
+                              <div className="flex gap-1 ml-2 flex-shrink-0">
+                                <a href={'https://www.google.com/maps/dir/?api=1&destination='+walk.lat+','+walk.lon} target="_blank" rel="noopener noreferrer" className="p-1.5 rounded-lg bg-white/5 text-white/30 hover:text-yellow-300 transition-all" title="Get directions">
+                                  🧭
+                                </a>
+                                <button onClick={function(){removeWalk(walk.id);}} className="p-1.5 rounded-lg bg-white/5 text-red-400/50 hover:text-red-400 transition-all" title="Remove">
+                                  ✕
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
