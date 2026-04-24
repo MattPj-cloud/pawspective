@@ -385,13 +385,56 @@
       var [scanImageUrl, setScanImageUrl] = useState(null);
       var [scanActive, setScanActive] = useState(false);
 
+      // Dog breed keywords from ImageNet classes (151-268) to filter MobileNet results
+      var DOG_BREED_KEYWORDS = [
+        'chihuahua','japanese spaniel','maltese','pekinese','pekingese','shih-tzu','blenheim spaniel',
+        'papillon','toy terrier','rhodesian ridgeback','afghan hound','basset','beagle','bloodhound',
+        'bluetick','coonhound','walker hound','foxhound','redbone','borzoi','wolfhound','greyhound',
+        'whippet','ibizan hound','elkhound','otterhound','saluki','deerhound','weimaraner',
+        'staffordshire','pit bull','bedlington terrier','border terrier','kerry blue terrier',
+        'irish terrier','norfolk terrier','norwich terrier','yorkshire terrier','wire-haired fox terrier',
+        'lakeland terrier','sealyham terrier','airedale','cairn','australian terrier','dandie dinmont',
+        'boston bull','miniature schnauzer','giant schnauzer','standard schnauzer','scotch terrier',
+        'tibetan terrier','silky terrier','soft-coated wheaten terrier','west highland white terrier',
+        'lhasa','flat-coated retriever','curly-coated retriever','golden retriever','labrador retriever',
+        'chesapeake bay retriever','german short-haired pointer','vizsla','english setter','irish setter',
+        'gordon setter','brittany spaniel','clumber','english springer','welsh springer spaniel',
+        'cocker spaniel','sussex spaniel','irish water spaniel','kuvasz','schipperke','groenendael',
+        'malinois','briard','kelpie','komondor','old english sheepdog','shetland sheepdog','collie',
+        'border collie','bouvier des flandres','rottweiler','german shepherd','doberman','miniature pinscher',
+        'greater swiss mountain dog','bernese mountain dog','appenzeller','entlebucher','boxer','bull mastiff',
+        'tibetan mastiff','french bulldog','great dane','saint bernard','eskimo dog','malamute',
+        'siberian husky','dalmatian','affenpinscher','basenji','pug','leonberg','newfoundland',
+        'great pyrenees','samoyed','pomeranian','chow','keeshond','brabancon griffon','pembroke',
+        'cardigan','toy poodle','miniature poodle','standard poodle','mexican hairless',
+        'timber wolf','white wolf','dingo','dhole','african hunting dog',
+        // Generic dog terms
+        'terrier','spaniel','retriever','setter','hound','shepherd','poodle','bulldog','mastiff',
+        'collie','corgi','husky','schnauzer','sheepdog','wolfhound','dachshund','pinscher'
+      ];
+
+      function isDogBreed(className){
+        var lower=className.toLowerCase();
+        for(var i=0;i<DOG_BREED_KEYWORDS.length;i++){
+          if(lower.indexOf(DOG_BREED_KEYWORDS[i])!==-1) return true;
+        }
+        return false;
+      }
+
+      function cleanBreedName(className){
+        // Take the first part before comma, clean up
+        var name=className.split(',')[0].trim();
+        // Remove common suffixes
+        name=name.replace(/\s*(dog|hound|terrier|spaniel|retriever|setter)\s*$/i, function(m){return m;});
+        return name;
+      }
+
       function handleScanUpload(e){
         var file=e.target.files&&e.target.files[0];if(!file)return;
         var url=URL.createObjectURL(file);
         setScanImageUrl(url);setScanResults(null);setScanPhase('');setScanActive(true);
         e.target.value='';
 
-        // Load model if needed, then classify
         setScanPhase('Loading AI model...');
         var modelPromise;
         if(scanModel){modelPromise=Promise.resolve(scanModel);}
@@ -401,23 +444,43 @@
         }
         modelPromise.then(function(model){
           setScanPhase('Analyzing breed features...');
-          // Create a hidden image element for classification
           var img=new Image();img.crossOrigin='anonymous';
           img.onload=function(){
             setScanPhase('Identifying breed...');
-            model.classify(img,5).then(function(predictions){
-              // Filter for dog-related predictions and map to breed names
-              var results=predictions.map(function(p){
-                var name=p.className.toLowerCase();
-                // ImageNet labels often have format "breed_name" or "breed name, description"
-                var breedName=name.split(',')[0].trim().replace(/_/g,' ');
-                // Try to find a matching breed fact
-                var factKey=breedName.replace(/\s+/g,'').toLowerCase();
-                var fact=BREED_FACTS[factKey]||null;
-                // Try first word match
-                if(!fact){var firstWord=factKey.split(' ')[0];fact=BREED_FACTS[firstWord]||null;}
-                return {breed:breedName,confidence:Math.round(p.probability*100),fact:fact};
-              });
+            // Get more predictions to find dog breeds among them
+            model.classify(img,10).then(function(predictions){
+              // Filter to only dog breed predictions
+              var dogPreds=predictions.filter(function(p){return isDogBreed(p.className);});
+
+              var results;
+              if(dogPreds.length>0){
+                // Normalize probabilities among dog predictions
+                var totalProb=dogPreds.reduce(function(sum,p){return sum+p.probability;},0);
+                results=dogPreds.slice(0,5).map(function(p){
+                  var breedName=cleanBreedName(p.className);
+                  var normalizedConf=totalProb>0?Math.round((p.probability/totalProb)*100):Math.round(p.probability*100);
+                  var factKey=breedName.replace(/[\s-]+/g,'').toLowerCase();
+                  var fact=BREED_FACTS[factKey]||null;
+                  if(!fact){
+                    // Try matching first word
+                    var words=factKey.split(/(?=[A-Z])/);
+                    var firstWord=breedName.split(/[\s-]/)[0].toLowerCase();
+                    fact=BREED_FACTS[firstWord]||null;
+                  }
+                  if(!fact){
+                    // Try partial match against BREED_FACTS keys
+                    var keys=Object.keys(BREED_FACTS);
+                    for(var k=0;k<keys.length;k++){
+                      if(factKey.indexOf(keys[k])!==-1||keys[k].indexOf(factKey)!==-1){fact=BREED_FACTS[keys[k]];break;}
+                    }
+                  }
+                  return {breed:breedName,confidence:normalizedConf,fact:fact};
+                });
+              } else {
+                // No dog breeds found — show a friendly message
+                results=[{breed:'Hmm, not sure this is a dog!',confidence:0,fact:'Try uploading a clearer photo of a dog, or get a bit closer.'}];
+              }
+
               setScanResults(results);setScanPhase('');setScanActive(false);
               playSparkle();
               if(results[0]&&results[0].confidence>30){
