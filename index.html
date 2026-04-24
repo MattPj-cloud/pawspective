@@ -84,10 +84,27 @@
     .puzzle-tile { cursor: pointer; transition: transform 0.15s ease; border: 1px solid rgba(255,255,255,0.1); }
     .puzzle-tile:hover { transform: scale(1.05); border-color: rgba(250,204,21,0.5); }
     .puzzle-tile.selected { border: 2px solid #facc15; box-shadow: 0 0 12px rgba(250,204,21,0.4); }
+    .scan-laser {
+      position: absolute; left: 0; width: 100%; height: 4px;
+      background: linear-gradient(90deg, transparent, #facc15, transparent);
+      box-shadow: 0 0 20px rgba(250,204,21,0.6); animation: scanBreedLaser 1.5s ease-in-out infinite; z-index: 10;
+    }
+    @keyframes scanBreedLaser { 0% { top: 5%; } 50% { top: 90%; } 100% { top: 5%; } }
+    @keyframes scanPulseRing {
+      0% { transform: scale(0.8); opacity: 0.8; }
+      50% { transform: scale(1.1); opacity: 0.4; }
+      100% { transform: scale(0.8); opacity: 0.8; }
+    }
+    .scan-pulse-ring { animation: scanPulseRing 1.5s ease-in-out infinite; }
+    .confidence-bar { transition: width 0.8s ease-out; }
   </style>
 </head>
 <body class="bg-midnight min-h-screen flex items-start justify-center p-4">
   <div id="root"></div>
+  <!-- TensorFlow.js + MobileNet for breed scanning -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.17.0"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@2.1.1"></script>
+
   <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -285,6 +302,13 @@
       var [encSearch, setEncSearch] = useState('');
       var [allBreeds, setAllBreeds] = useState([]);
 
+      // Breed Scanner state
+      var [scanModel, setScanModel] = useState(null);
+      var [scanModelLoading, setScanModelLoading] = useState(false);
+      var [scanResults, setScanResults] = useState(null);
+      var [scanPhase, setScanPhase] = useState('');
+      var scanImgRef = useRef(null);
+
       // Fetch full breed list from API
       useEffect(function(){
         fetch('https://dog.ceo/api/breeds/list/all').then(function(r){return r.json();}).then(function(data){
@@ -355,6 +379,57 @@
         var iv=setInterval(function(){i++;if(i<phases.length){setBioPhase(phases[i]);}else{clearInterval(iv);setBioScanning(false);setVerified(true);playSparkle();doConfetti({particleCount:60,spread:60,origin:{y:0},emojis:['🦴','🍖','🐾']});}},1000);
         e.target.value='';
       }
+
+      // ── BREED SCANNER ──
+      var scanFileRef = useRef(null);
+      var [scanImageUrl, setScanImageUrl] = useState(null);
+      var [scanActive, setScanActive] = useState(false);
+
+      function handleScanUpload(e){
+        var file=e.target.files&&e.target.files[0];if(!file)return;
+        var url=URL.createObjectURL(file);
+        setScanImageUrl(url);setScanResults(null);setScanPhase('');setScanActive(true);
+        e.target.value='';
+
+        // Load model if needed, then classify
+        setScanPhase('Loading AI model...');
+        var modelPromise;
+        if(scanModel){modelPromise=Promise.resolve(scanModel);}
+        else{
+          setScanModelLoading(true);
+          modelPromise=mobilenet.load({version:2,alpha:1.0}).then(function(m){setScanModel(m);setScanModelLoading(false);return m;});
+        }
+        modelPromise.then(function(model){
+          setScanPhase('Analyzing breed features...');
+          // Create a hidden image element for classification
+          var img=new Image();img.crossOrigin='anonymous';
+          img.onload=function(){
+            setScanPhase('Identifying breed...');
+            model.classify(img,5).then(function(predictions){
+              // Filter for dog-related predictions and map to breed names
+              var results=predictions.map(function(p){
+                var name=p.className.toLowerCase();
+                // ImageNet labels often have format "breed_name" or "breed name, description"
+                var breedName=name.split(',')[0].trim().replace(/_/g,' ');
+                // Try to find a matching breed fact
+                var factKey=breedName.replace(/\s+/g,'').toLowerCase();
+                var fact=BREED_FACTS[factKey]||null;
+                // Try first word match
+                if(!fact){var firstWord=factKey.split(' ')[0];fact=BREED_FACTS[firstWord]||null;}
+                return {breed:breedName,confidence:Math.round(p.probability*100),fact:fact};
+              });
+              setScanResults(results);setScanPhase('');setScanActive(false);
+              playSparkle();
+              if(results[0]&&results[0].confidence>30){
+                doConfetti({particleCount:60,spread:80,origin:{y:0.3},emojis:['🐾','📸','✨']});
+              }
+            }).catch(function(err){console.error(err);setScanPhase('Error analyzing image');setScanActive(false);});
+          };
+          img.src=url;
+        }).catch(function(err){console.error(err);setScanPhase('Error loading model');setScanActive(false);setScanModelLoading(false);});
+      }
+
+      function resetScan(){setScanImageUrl(null);setScanResults(null);setScanPhase('');setScanActive(false);}
       function fetchDogGif(){
         setGifLoading(true);setGifUrl(null);
         var searches=['funny dog','cute puppy','dog fail','puppy playing','dog zoomies','silly dog'];
@@ -559,6 +634,7 @@
       // ── NAV ──
       var NAV = [
         {id:'home',label:'🐕 Rate',emoji:'🐕'},
+        {id:'scan',label:'📸 Scan',emoji:'📸'},
         {id:'match',label:'🔮 Match',emoji:'🔮'},
         {id:'games',label:'🎮 Games',emoji:'🎮'},
         {id:'breeds',label:'📖 Breeds',emoji:'📖'},
@@ -642,6 +718,89 @@
                   </button>
                   <button onClick={function(){setGifUrl(null);}} className="absolute top-2 right-2 p-1.5 rounded-full bg-black/40 hover:bg-black/60 text-white text-xs font-bold">✕</button>
                   <p className="text-center text-white/20 text-[8px] mt-1">Powered by Tenor</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ═══ BREED SCANNER PAGE ═══ */}
+          {page==='scan' && (
+            <div className="glass-card rounded-3xl p-5">
+              <div className="text-center mb-4">
+                <p className="text-xl font-bold text-white">📸 Breed Scanner</p>
+                <p className="text-white/40 text-xs mt-1">Snap a photo of any dog to identify its breed</p>
+              </div>
+
+              {!scanImageUrl ? (
+                <div className="text-center">
+                  <div className="w-48 h-48 mx-auto rounded-2xl bg-deepblue/50 border-2 border-dashed border-white/20 flex flex-col items-center justify-center mb-4">
+                    <span className="text-5xl mb-2">🐕</span>
+                    <p className="text-white/30 text-xs">Upload or take a photo</p>
+                  </div>
+                  <input ref={scanFileRef} type="file" accept="image/*" capture="environment" onChange={handleScanUpload} className="hidden"/>
+                  <div className="flex gap-2">
+                    <button onClick={function(){scanFileRef.current&&scanFileRef.current.click();}} className="btn flex-1 flex items-center justify-center gap-1.5 px-3 py-3 rounded-xl text-sm font-medium text-yellow-200">📷 Take Photo</button>
+                    <button onClick={function(){
+                      var inp=document.createElement('input');inp.type='file';inp.accept='image/*';
+                      inp.onchange=handleScanUpload;inp.click();
+                    }} className="btn flex-1 flex items-center justify-center gap-1.5 px-3 py-3 rounded-xl text-sm font-medium text-yellow-200">🖼️ Upload</button>
+                  </div>
+                  <p className="text-white/20 text-[10px] mt-3">Powered by TensorFlow.js MobileNet — runs entirely in your browser</p>
+                </div>
+              ) : (
+                <div>
+                  {/* Scanned image */}
+                  <div className="relative w-56 h-56 mx-auto rounded-2xl overflow-hidden mb-4">
+                    <img ref={scanImgRef} src={scanImageUrl} alt="Scanned dog" className="w-full h-full object-cover"/>
+                    {scanActive && (
+                      <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center">
+                        <div className="scan-laser"/>
+                        <div className="w-20 h-20 rounded-full border-4 border-yellow-400/50 scan-pulse-ring mb-2"/>
+                        <p className="text-yellow-300 text-xs font-medium animate-pulse">{scanPhase}</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Results */}
+                  {scanResults && (
+                    <div className="mb-4">
+                      <p className="text-center text-purple-300 text-xs mb-3">🧬 Breed Analysis Results</p>
+                      {scanResults.map(function(result,idx){
+                        var isTop=idx===0;
+                        return (
+                          <div key={idx} className={'rounded-xl p-3 mb-2 '+(isTop?'bg-yellow-500/10 border border-yellow-500/30':'bg-white/5 border border-white/10')}>
+                            <div className="flex items-center justify-between mb-1.5">
+                              <span className={'text-sm font-semibold capitalize '+(isTop?'text-yellow-300':'text-white/70')}>
+                                {isTop?'🏆 ':''}{result.breed}
+                              </span>
+                              <span className={'text-xs font-bold px-2 py-0.5 rounded-full '+(
+                                result.confidence>60?'bg-green-500/20 text-green-300':
+                                result.confidence>30?'bg-yellow-500/20 text-yellow-300':
+                                'bg-white/10 text-white/50'
+                              )}>{result.confidence}%</span>
+                            </div>
+                            <div className="w-full bg-white/10 rounded-full h-1.5 mb-1.5">
+                              <div className={'confidence-bar h-1.5 rounded-full '+(isTop?'bg-yellow-400':'bg-purple-400')} style={{width:result.confidence+'%'}}/>
+                            </div>
+                            {result.fact && <p className="text-purple-300/50 text-[10px] italic">📖 {result.fact}</p>}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* Actions */}
+                  <div className="flex gap-2">
+                    <button onClick={resetScan} className="btn flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-medium text-yellow-200">📸 Scan Another</button>
+                    {scanResults && scanResults[0] && (
+                      <button onClick={function(){
+                        var b=scanResults[0].breed.replace(/\s+/g,'').toLowerCase();
+                        var match=allBreeds.find(function(ab){return ab.replace('/','').toLowerCase().indexOf(b)!==-1;});
+                        if(match){selectEncBreed(match);setPage('breeds');}
+                        else{setEncSearch(scanResults[0].breed);setPage('breeds');}
+                      }} className="btn flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-medium text-yellow-200">📖 Learn More</button>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
